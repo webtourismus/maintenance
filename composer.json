@@ -1,0 +1,19 @@
+{
+    "name": "webtourismus/maintenance",
+    "description": "Provides default content and ongoing maintenance functions for projects based on webtourismus/drupal-starterkit.",
+    "type": "drupal-module",
+    "authors": [
+        {
+            "name": "Reinhard Hutter",
+            "email": "reinhard.hutter@webtourismus.at"
+        }
+    ],
+    "conflict": {
+        "drupal/maintenance": "*"
+    },
+    "require": {
+        "drupal/core": "^10",
+        "drush/drush": "^12",
+        "webtourismus/ebr": "^1"
+    }
+}
