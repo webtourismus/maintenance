@@ -65,7 +65,7 @@ class RoboFile extends \Robo\Tasks
    */
   public function kickoff(ConsoleIO $io) {
     $projectName = $this->detectDevProjectName();
-    if (!file_exists('./private/scaffold/settings.default.php.append') || !file_exists('../.env')) {
+    if (!file_exists('./private/scaffold/default.settings.php.append') || !file_exists('../.env')) {
       throw new AbortTasksException('This script can only be used by webtourismus/drupal-starterkit projects.');
     }
     if (file_exists('./.env')) {
@@ -85,7 +85,7 @@ class RoboFile extends \Robo\Tasks
     $io->say("Site {$projectName} was created.");
     $this->_exec("git init");
     $this->_exec("git remote add origin git@bitbucket.org:webtourismus/{$projectName}.git");
-    $this->_exec("./vendor/bin/drush config:export -y --commit --message=\"Intial commit\"");
+    $this->_exec("./vendor/bin/drush config:export -y --commit --message=\"Initial commit\"");
     $this->_exec("git push origin master");
     $io->say("Intial commit to Bitbucket done.");
   }
