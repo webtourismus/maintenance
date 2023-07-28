@@ -85,7 +85,7 @@ class RoboFile extends \Robo\Tasks
     $io->say("Site {$projectName} was created.");
     $this->_exec("git init");
     $this->_exec("git remote add origin git@bitbucket.org:webtourismus/{$projectName}.git");
-    $this->_exec("./vendor/bin/drush config:export -y --commit --message=\"Intial commit\"");
+    $this->_exec("./vendor/bin/drush config:export -y --commit --message=\"Initial commit\"");
     $this->_exec("git push origin master");
     $io->say("Intial commit to Bitbucket done.");
   }
