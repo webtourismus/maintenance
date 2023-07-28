@@ -5,6 +5,8 @@ declare(strict_types=1);
 use Robo\Symfony\ConsoleIO;
 use Robo\Exception\AbortTasksException;
 
+require_once('load.environment.php');
+
 class RoboFile extends \Robo\Tasks
 {
 
@@ -55,15 +57,14 @@ class RoboFile extends \Robo\Tasks
    * Running this script inside "~/example.dev1.webtourismus.at/" returns "example".
    */
   protected function detectDevProjectName() {
-    $this->ensureDevDir();
     preg_match(self::DEV_ENV_DIR_PATTERN, dirname(__FILE__), $results);
     return $results[3];
   }
-
   /**
    * Installs a Drupal website with default config and default data from webtourismus/drupal-starterkit.
    */
-  public function kickoff(ConsoleIO $io) {
+  public function kickoffInitDevEnv(ConsoleIO $io) {
+    $this->ensureDevDir();
     $projectName = $this->detectDevProjectName();
     if (!file_exists('./private/scaffold/default.settings.php.append') || !file_exists('../.env')) {
       throw new AbortTasksException('This script can only be used by webtourismus/drupal-starterkit projects.');
@@ -71,17 +72,32 @@ class RoboFile extends \Robo\Tasks
     if (file_exists('./.env')) {
       throw new AbortTasksException('A ".env" file already exists. Can\'t creata a new one.');
     }
+    $this->taskWriteToFile('.env')
+      ->line("PROJECT_NAME=\"{$projectName}\"")
+      ->line("DB_NAME=\"dev1_{$projectName}\"")
+      ->run();
+      $io->say("Created minimal .env file for dev system.");
+    }
+
+  /**
+   * Installs a Drupal website with default config and default data from webtourismus/drupal-starterkit.
+   */
+  public function kickoffInstallDrupal(ConsoleIO $io) {
+    $this->ensureDevDir();
+    $projectName = $this->detectDevProjectName();
+    if (!file_exists('./.env')) {
+      throw new AbortTasksException('".env" file is missing. Run "robo kickoff:init-dev-env" first.');
+    }
     if (file_exists('./web/sites/default/settings.php')) {
       throw new AbortTasksException('"settings.php" file found. This project already seems to be installed.');
     }
     $this->stopOnFail(TRUE);
-    $this->taskWriteToFile('.env')
-      ->line("PROJECT_NAME=\"{$this->detectDevProjectName()}\"")
-      ->line("DB_NAME=\"dev1_{$this->detectDevProjectName()}\"")
-      ->run();
-    $this->_exec("./vendor/bin/drush site:install --existing-config --account-name=entwicklung --account-mail=entwicklung@webtourismus.at --no-interaction");
-    $this->_exec("chmod -R u+w ./web/sites/default/");
+    $this->_exec("chmod -R u+w ./web/sites/default");
+    $this->_exec("cp ./web/sites/default/default.settings.php ./web/sites/default/settings.php");
+    $this->_exec("./vendor/bin/drush site:install --existing-config --site-name=\"{$projectName}\" --account-name=entwicklung --account-mail=entwicklung@webtourismus.at --no-interaction");
+    $this->_exec("chmod -R u+w ./web/sites/default");
     $this->_exec("./vendor/bin/drush maintenance:create-default-content -y");
+    $this->_exec("./vendor/bin/drush cache:rebuild");
     $io->say("Site {$projectName} was created.");
     $this->_exec("git init");
     $this->_exec("git remote add origin git@bitbucket.org:webtourismus/{$projectName}.git");
