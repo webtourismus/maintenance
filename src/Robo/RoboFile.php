@@ -65,7 +65,7 @@ class RoboFile extends \Robo\Tasks
    */
   public function kickoff(ConsoleIO $io) {
     $projectName = $this->detectDevProjectName();
-    if (!file_exists('./private/scaffold/settings.default.php.append') || !file_exists('../.env')) {
+    if (!file_exists('./private/scaffold/default.settings.php.append') || !file_exists('../.env')) {
       throw new AbortTasksException('This script can only be used by webtourismus/drupal-starterkit projects.');
     }
     if (file_exists('./.env')) {
