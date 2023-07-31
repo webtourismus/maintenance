@@ -355,7 +355,7 @@ final class PostCreateProjectCommands extends DrushCommands {
       'title' => 'Cookies',
       'menu_name' => 'legal',
     ]);
-    if ($empty($cookiesMenuLink)) {
+    if (empty($cookiesMenuLink)) {
       $config = $this->configFactory->getEditable('cookies.config');
       $menuLinkStorage->create([
         'title' => 'Cookies',

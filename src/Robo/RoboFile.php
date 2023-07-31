@@ -61,26 +61,20 @@ class RoboFile extends \Robo\Tasks
     return $results[3];
   }
   /**
-   * Installs a Drupal website with default config and default data from webtourismus/drupal-starterkit.
+   * Creates files required for an automated Drupal installation process.
    */
-  public function kickoffInitDevEnv(ConsoleIO $io) {
+  public function kickoffInitDev(ConsoleIO $io) {
     $this->ensureDevDir();
     $projectName = $this->detectDevProjectName();
     if (!file_exists('./private/scaffold/default.settings.php.append') || !file_exists('../.env')) {
       throw new AbortTasksException('This script can only be used by webtourismus/drupal-starterkit projects.');
     }
-    if (file_exists('./.env')) {
-      throw new AbortTasksException('A ".env" file already exists. Can\'t creata a new one.');
+    if (!empty($_ENV['PROJECT_NAME']) || !empty($_ENV['DB_NAME'])) {
+      throw new AbortTasksException('Project specific ".env" settings detected. Aborting.');
     }
     if (file_exists('./web/sites/default/settings.php')) {
-      throw new AbortTasksException('A "settings.php" file already exists. Can\'t creata a new one.');
+      throw new AbortTasksException('A "settings.php" file was found. Aborting.');
     }
-    $this->taskConcat([
-      './web/sites/default/default.settings.php',
-      './private/scaffold/default.settings.php.append',
-    ])
-      ->to('./web/sites/default/settings.php')
-      ->run();
     $this->taskWriteToFile('.env')
       ->line("PROJECT_NAME=\"{$projectName}\"")
       ->line("DB_NAME=\"dev1_{$projectName}\"")
@@ -95,7 +89,7 @@ class RoboFile extends \Robo\Tasks
     $this->ensureDevDir();
     $projectName = $this->detectDevProjectName();
     if (!file_exists('./.env') || !file_exists('./web/sites/default/settings.php')) {
-      throw new AbortTasksException('"settings.php" or ".env" file is missing. Run "robo kickoff:init-dev-env" first.');
+      throw new AbortTasksException('"settings.php" or ".env" file is missing. Run "robo kickoff:init-dev" first.');
     }
     if (file_exists('./web/sites/default/files/')) {
       throw new AbortTasksException('Drupal "files" storage directory found. This project already seems to be installed.');
@@ -103,8 +97,27 @@ class RoboFile extends \Robo\Tasks
     $this->stopOnFail(TRUE);
     $this->_exec("chmod -R u+w ./web/sites/default");
     $this->_exec("cp ./web/sites/default/default.settings.php ./web/sites/default/settings.php");
-    $this->_exec("./vendor/bin/drush site:install --existing-config --site-name=\"{$projectName}\" --account-name=entwicklung --account-mail=entwicklung@webtourismus.at --no-interaction");
+    // Drush's install routine can't access $_ENV from composer autoloader (unknown bug?).
+    // So robo (which does know $_ENV) passes them as hardcoded values to the CLI.
+    $this->_exec("./vendor/bin/drush site:install --existing-config --site-name=\"{$projectName}\" --account-name=entwicklung --account-mail=entwicklung@webtourismus.at --db-url=\"mysql://{$_ENV['DB_USER']}:{$_ENV['DB_PASS']}@{$_ENV['DB_HOST']}:{$_ENV['DB_PORT']}/{$_ENV['DB_NAME']}\" --no-interaction");
     $this->_exec("chmod -R u+w ./web/sites/default");
+    // Convert hardcoded credentials from CLI back into $_ENV settings.
+    $this->taskReplaceInFile('./web/sites/default/settings.php')
+      ->from([
+        " 'database' => '{$_ENV['DB_NAME']}',",
+        " 'username' => '{$_ENV['DB_USER']}',",
+        " 'password' => '{$_ENV['DB_PASS']}',",
+        " 'host' => '{$_ENV['DB_HOST']}',",
+        " 'port' => '{$_ENV['DB_PORT']}',",
+      ])
+      ->to([
+        " 'database' => \$_ENV['DB_NAME'],",
+        " 'username' => \$_ENV['DB_USER'],",
+        " 'password' => \$_ENV['DB_PASS'],",
+        " 'host' => \$_ENV['DB_HOST'] ?? 'localhost',",
+        " 'port' => \$_ENV['DB_PORT'] ?? 3306,",
+      ])
+      ->run();
     $this->_exec("./vendor/bin/drush maintenance:create-default-content -y");
     $this->_exec("./vendor/bin/drush cache:rebuild");
     $io->say("Site {$projectName} was created.");
