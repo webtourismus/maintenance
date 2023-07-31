@@ -73,7 +73,7 @@ class RoboFile extends \Robo\Tasks
       throw new AbortTasksException('A ".env" file already exists. Can\'t creata a new one.');
     }
     if (file_exists('./web/sites/default/settings.php')) {
-      throw new AbortTasksException('A ".env" file already exists. Can\'t creata a new one.');
+      throw new AbortTasksException('A "settings.php" file already exists. Can\'t creata a new one.');
     }
     $this->taskConcat([
       './web/sites/default/default.settings.php',
@@ -94,11 +94,11 @@ class RoboFile extends \Robo\Tasks
   public function kickoffInstallDrupal(ConsoleIO $io) {
     $this->ensureDevDir();
     $projectName = $this->detectDevProjectName();
-    if (!file_exists('./.env')) {
-      throw new AbortTasksException('".env" file is missing. Run "robo kickoff:init-dev-env" first.');
+    if (!file_exists('./.env') || !file_exists('./web/sites/default/settings.php')) {
+      throw new AbortTasksException('"settings.php" or ".env" file is missing. Run "robo kickoff:init-dev-env" first.');
     }
-    if (file_exists('./web/sites/default/settings.php')) {
-      throw new AbortTasksException('"settings.php" file found. This project already seems to be installed.');
+    if (file_exists('./web/sites/default/files/')) {
+      throw new AbortTasksException('Drupal "files" storage directory found. This project already seems to be installed.');
     }
     $this->stopOnFail(TRUE);
     $this->_exec("chmod -R u+w ./web/sites/default");
