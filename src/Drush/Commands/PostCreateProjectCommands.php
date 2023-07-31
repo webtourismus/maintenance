@@ -57,7 +57,6 @@ final class PostCreateProjectCommands extends DrushCommands {
     if (file_exists($fileWithSensitiveDefaultContentOnLocalDevSystem)) {
       include_once($fileWithSensitiveDefaultContentOnLocalDevSystem);
     }
-    return;
 
     // Frontpage (en, de) with alias, interal_id and site setting
     if (is_null($this->ebr->getEntity('node', 'frontpage'))) {

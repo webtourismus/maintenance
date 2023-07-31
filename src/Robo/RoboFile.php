@@ -72,12 +72,21 @@ class RoboFile extends \Robo\Tasks
     if (file_exists('./.env')) {
       throw new AbortTasksException('A ".env" file already exists. Can\'t creata a new one.');
     }
+    if (file_exists('./web/sites/default/settings.php')) {
+      throw new AbortTasksException('A ".env" file already exists. Can\'t creata a new one.');
+    }
+    $this->taskConcat([
+      './web/sites/default/default.settings.php',
+      './private/scaffold/default.settings.php.append',
+    ])
+      ->to('./web/sites/default/settings.php')
+      ->run();
     $this->taskWriteToFile('.env')
       ->line("PROJECT_NAME=\"{$projectName}\"")
       ->line("DB_NAME=\"dev1_{$projectName}\"")
       ->run();
-      $io->say("Created minimal .env file for dev system.");
-    }
+    $io->say("Created minimal env and settings file for dev system.");
+  }
 
   /**
    * Installs a Drupal website with default config and default data from webtourismus/drupal-starterkit.
@@ -117,9 +126,12 @@ class RoboFile extends \Robo\Tasks
         throw new AbortTasksException('Environment is behind origin repository.');
       }
     }
-    if (empty($message)) {
+    if (empty($message) && $_ENV['ENV']) {
       $date = date('Y-m-d H:i:s');
       $message = "Sync from {$_ENV['ENV']} on {$date}";
+    }
+    if (empty($message)) {
+      $message = $io->ask('Commit message: ');
     }
     $this->stopOnFail(TRUE);
     $this->_exec("./vendor/bin/drush config:export -y --commit --message=\"{$message}\"");
