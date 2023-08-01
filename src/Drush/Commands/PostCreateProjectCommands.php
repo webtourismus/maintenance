@@ -287,6 +287,47 @@ final class PostCreateProjectCommands extends DrushCommands {
       );
     }
 
+    // Webform Seminar "show after submit" page
+    if (is_null($this->ebr->getEntity('node', 'webform_sent_seminar'))) {
+      $node = Node::create([
+        'title' => 'Seminar-Anfrage abgeschickt',
+        'type' => 'page',
+        'langcode' => 'de',
+        'uid' => 1,
+        'status' => 0,
+        EntityBusinessrules::FIELD_INTERNAL_ID => 'webform_sent_seminar',
+        EntityBusinessrules::FIELD_INTERAL_NOTES => 'Versteckt, aktivieren bei Bedarf. Diese Notiz löschen nach Prüfung.',
+        'field_seo' => '{"robots":"noindex, nofollow, noarchive, nosnippet, noimageindex"}',
+      ]);
+      $node->addTranslation('en', [
+        'title' => 'Seminar enquiry submitted',
+        'uid' => 1,
+        'status' => 0,
+        EntityBusinessrules::FIELD_INTERNAL_ID => 'webform_sent_seminar',
+        EntityBusinessrules::FIELD_INTERAL_NOTES => 'Versteckt, aktivieren bei Bedarf. Diese Notiz löschen nach Prüfung.',
+        'field_seo' => '{"robots":"noindex, nofollow, noarchive, nosnippet, noimageindex"}',
+      ]);
+      $node->save();
+      $nodeAlias = PathAlias::create([
+        'path' => "/node/{$node->id()}",
+        'alias' => '/seminar-sent',
+        'langcode' => 'de',
+      ]);
+      $nodeAlias->save();
+      $nodeAlias = PathAlias::create([
+        'path' => "/node/{$node->id()}",
+        'alias' => '/seminar-sent',
+        'langcode' => 'en',
+      ]);
+      $nodeAlias->save();
+      $this->keyValue->get('pathauto_state.node')->set($node->id(), PathautoState::SKIP);
+      $this->simpleSitemapEntityManager->setEntityInstanceSettings(
+        $node->getEntityTypeId(),
+        $node->id(),
+        ['index' => '0'],
+      );
+    }
+
     // Imprint page (used by cookies module)
     if (is_null($this->ebr->getEntity('node', 'imprint'))) {
       $node = Node::create([
