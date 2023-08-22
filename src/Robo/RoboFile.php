@@ -108,28 +108,9 @@ class RoboFile extends \Robo\Tasks
     }
     $this->stopOnFail(TRUE);
     $this->_exec("chmod -R u+w ./web/sites/default");
-    // .env variable autoloading does not work when Drush is called through Robo
-    // @see https://github.com/consolidation/robo/issues/1148
-    $this->_exec("./vendor/bin/drush site:install --existing-config --site-name=\"{$projectName}\" --account-name=entwicklung --account-mail=entwicklung@webtourismus.at --db-url=\"mysql://{$_ENV['DB_USER']}:{$_ENV['DB_PASS']}@{$_ENV['DB_HOST']}:{$_ENV['DB_PORT']}/{$_ENV['DB_NAME']}\" --no-interaction");
+    // ensure variables_order in php.ini includes the "E" option, e.g. variables_order = "EGPCS"
+    $this->_exec("./vendor/bin/drush site:install --existing-config --site-name=\"{$projectName}\" --account-name=entwicklung --account-mail=entwicklung@webtourismus.at --no-interaction");
     $this->_exec("chmod -R u+w ./web/sites/default");
-    // Convert hardcoded credentials from CLI back into $_ENV settings.
-    $this->taskReplaceInFile('./web/sites/default/settings.php')
-      ->from([
-        "'database' => '{$_ENV['DB_NAME']}',",
-        "'username' => '{$_ENV['DB_USER']}',",
-        "'password' => '{$_ENV['DB_PASS']}',",
-        "'host' => '{$_ENV['DB_HOST']}',",
-        "'port' => '{$_ENV['DB_PORT']}',",
-      ])
-      ->to([
-        "'database' => \$_ENV['DB_NAME'],",
-        "'username' => \$_ENV['DB_USER'],",
-        "'password' => \$_ENV['DB_PASS'],",
-        "'host' => \$_ENV['DB_HOST'] ?? 'localhost',",
-        "'port' => \$_ENV['DB_PORT'] ?? 3306,",
-      ])
-      ->run();
-    // @TODO script currently breaks here because due .env bug from above
     $this->_exec("./vendor/bin/drush cache:rebuild");
     $this->_exec("./vendor/bin/drush maintenance:create-default-content -y");
     $io->say("Site {$projectName} was created.");
