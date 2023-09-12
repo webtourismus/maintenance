@@ -113,6 +113,11 @@ class RoboFile extends \Robo\Tasks
     $this->_exec("chmod -R u+w ./web/sites/default");
     $this->_exec("./vendor/bin/drush cache:rebuild");
     $this->_exec("./vendor/bin/drush maintenance:create-default-content -y");
+    // import translations for modules not available on drupal.org
+    $this->_exec("./vendor/bin/drush locale:import de modules/contrib/ebr/translations/ebr.de.po");
+    $this->_exec("./vendor/bin/drush locale:import de modules/contrib/gin_custom/translations/gin_custom.de.po");
+    $this->_exec("./vendor/bin/drush locale:import de modules/contrib/seasonal_paragraphs/translations/seasonal_paragraphs.de.po");
+    $this->_exec("./vendor/bin/drush locale:import de modules/custom/backend/translations/backend.de.po");
     $io->say("Site {$projectName} was created.");
     $this->_exec("git init");
     $this->_exec("git remote add origin git@bitbucket.org:webtourismus/{$projectName}.git");

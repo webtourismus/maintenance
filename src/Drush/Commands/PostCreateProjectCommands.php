@@ -6,6 +6,7 @@ use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\KeyValueStore\KeyValueFactoryInterface;
 use Drupal\pathauto\PathautoState;
+use Drupal\taxonomy\Entity\Term;
 use Drush\Attributes as CLI;
 use Drush\Commands\DrushCommands;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -501,6 +502,20 @@ final class PostCreateProjectCommands extends DrushCommands {
         $existingUuid = str_replace('block_content:', '', $blockConfig->get('plugin'));
         $block->set('uuid', $existingUuid)->save();
       }
+    }
+
+    // Taxonomy term "news" used by views
+    if (empty($this->entityTypeManager->getStorage('taxonomy_term')->loadByProperties([
+      'name' => 'News',
+      'vid' => 'page',
+    ]))) {
+      $term = Term::create([
+        'name' => 'News',
+        'vid' => 'page',
+        'langcode' => 'de',
+        'status' => 1,
+      ]);
+      $term->save();
     }
   }
 }
