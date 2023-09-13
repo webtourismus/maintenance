@@ -49,7 +49,7 @@ final class PostCreateProjectCommands extends DrushCommands {
   }
 
   /**
-   * Command description here.
+   * Create default users, nodes, block_content and terms.
    */
   #[CLI\Command(name: 'maintenance:create-default-content', aliases: ['def-content'])]
   #[CLI\Usage(name: 'maintenance:create-default-content', description: 'Create default users, nodes and block_content.')]
