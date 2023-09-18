@@ -93,8 +93,71 @@ final class PostCreateProjectCommands extends DrushCommands {
       $nodeAlias->save();
       // Disable pathauto for this node
       $this->keyValue->get('pathauto_state.node')->set($node->id(), PathautoState::SKIP);
+      // Set site frontpage config value
       $config = $this->configFactory->getEditable('system.site');
       $config->set('page.front', "/node/{$node->id()}")->save();
+    }
+
+    // Room list (en, de) with alias and interal_id
+    if (is_null($this->ebr->getEntity('node', 'room_list'))) {
+      $node = Node::create([
+        'title' => 'Zimmer',
+        'type' => 'page',
+        'langcode' => 'de',
+        'uid' => 1,
+        'status' => 1,
+        EntityBusinessrules::FIELD_INTERNAL_ID => 'room_list',
+      ]);
+      $node->addTranslation('en', [
+        'title' => 'Rooms',
+        'uid' => 1,
+        'status' => 1,
+        EntityBusinessrules::FIELD_INTERNAL_ID => 'room_list',
+      ]);
+      $node->save();
+      $nodeAlias = PathAlias::create([
+        'path' => "/node/{$node->id()}",
+        'alias' => '/zimmer',
+        'langcode' => 'de',
+      ]);
+      $nodeAlias->save();
+      $nodeAlias = PathAlias::create([
+        'path' => "/node/{$node->id()}",
+        'alias' => '/rooms',
+        'langcode' => 'en',
+      ]);
+      $nodeAlias->save();
+    }
+
+    // Pacakge list (en, de) with alias and interal_id
+    if (is_null($this->ebr->getEntity('node', 'package_list'))) {
+      $node = Node::create([
+        'title' => 'Angebote',
+        'type' => 'page',
+        'langcode' => 'de',
+        'uid' => 1,
+        'status' => 1,
+        EntityBusinessrules::FIELD_INTERNAL_ID => 'package_list',
+      ]);
+      $node->addTranslation('en', [
+        'title' => 'Offers',
+        'uid' => 1,
+        'status' => 1,
+        EntityBusinessrules::FIELD_INTERNAL_ID => 'package_list',
+      ]);
+      $node->save();
+      $nodeAlias = PathAlias::create([
+        'path' => "/node/{$node->id()}",
+        'alias' => '/angebote',
+        'langcode' => 'de',
+      ]);
+      $nodeAlias->save();
+      $nodeAlias = PathAlias::create([
+        'path' => "/node/{$node->id()}",
+        'alias' => '/offers',
+        'langcode' => 'en',
+      ]);
+      $nodeAlias->save();
     }
 
     // Enquiry (en, de) with alias, interal_id
@@ -106,14 +169,14 @@ final class PostCreateProjectCommands extends DrushCommands {
         'uid' => 1,
         'status' => 1,
         EntityBusinessrules::FIELD_INTERNAL_ID => AccommodationBase::ACTION_ENQUIRY,
-        EntityBusinessrules::FIELD_INTERAL_NOTES => 'Öffentlich, verstecken wenn externes Anfrage-Widget. Diese Notiz löschen nach Prüfung.',
+        EntityBusinessrules::FIELD_INTERAL_NOTES => '@todo: Formular oder Widget einpflegen.',
       ]);
       $node->addTranslation('en', [
         'title' => 'Enquiry',
         'uid' => 1,
         'status' => 1,
         EntityBusinessrules::FIELD_INTERNAL_ID => AccommodationBase::ACTION_ENQUIRY,
-        EntityBusinessrules::FIELD_INTERAL_NOTES => 'Öffentlich, verstecken wenn externes Anfrage-Widget. Diese Notiz löschen nach Prüfung.',
+        EntityBusinessrules::FIELD_INTERAL_NOTES => '@todo: Formular oder Widget einpflegen.',
       ]);
       $node->save();
       $nodeAlias = PathAlias::create([
@@ -140,14 +203,14 @@ final class PostCreateProjectCommands extends DrushCommands {
         'uid' => 1,
         'status' => 1,
         EntityBusinessrules::FIELD_INTERNAL_ID => AccommodationBase::ACTION_BOOK,
-        EntityBusinessrules::FIELD_INTERAL_NOTES => 'Muss befüllt werden. Diese Notiz löschen nach Prüfung.',
+        EntityBusinessrules::FIELD_INTERAL_NOTES => '@todo: Widget einpflegen.',
       ]);
       $node->addTranslation('en', [
         'title' => 'Book online',
         'uid' => 1,
         'status' => 1,
         EntityBusinessrules::FIELD_INTERNAL_ID => AccommodationBase::ACTION_BOOK,
-        EntityBusinessrules::FIELD_INTERAL_NOTES => 'Muss befüllt werden. Diese Notiz löschen nach Prüfung.',
+        EntityBusinessrules::FIELD_INTERAL_NOTES => '@todo: Widget einpflegen.',
       ]);
       $node->save();
       $nodeAlias = PathAlias::create([
@@ -174,7 +237,7 @@ final class PostCreateProjectCommands extends DrushCommands {
         'uid' => 1,
         'status' => 1,
         EntityBusinessrules::FIELD_INTERNAL_ID => 'webform_sent_enquiry',
-        EntityBusinessrules::FIELD_INTERAL_NOTES => 'Öffentlich, verstecken wenn kein Bedarf. Diese Notiz löschen nach Prüfung.',
+        EntityBusinessrules::FIELD_INTERAL_NOTES => '@todo: Verstecken falls keine Webform "enquiry".',
         'field_seo' => '{"robots":"noindex, nofollow, noarchive, nosnippet, noimageindex"}',
       ]);
       $node->addTranslation('en', [
@@ -182,7 +245,7 @@ final class PostCreateProjectCommands extends DrushCommands {
         'uid' => 1,
         'status' => 1,
         EntityBusinessrules::FIELD_INTERNAL_ID => 'webform_sent_enquiry',
-        EntityBusinessrules::FIELD_INTERAL_NOTES => 'Öffentlich, verstecken wenn kein Bedarf. Diese Notiz löschen nach Prüfung.',
+        EntityBusinessrules::FIELD_INTERAL_NOTES => '@todo: Verstecken falls keine Webform "enquiry".',
         'field_seo' => '{"robots":"noindex, nofollow, noarchive, nosnippet, noimageindex"}',
       ]);
       $node->save();
@@ -215,7 +278,7 @@ final class PostCreateProjectCommands extends DrushCommands {
         'uid' => 1,
         'status' => 0,
         EntityBusinessrules::FIELD_INTERNAL_ID => 'webform_sent_giftcard',
-        EntityBusinessrules::FIELD_INTERAL_NOTES => 'Versteckt, aktivieren bei Bedarf. Diese Notiz löschen nach Prüfung.',
+        EntityBusinessrules::FIELD_INTERAL_NOTES => '@todo: Veröffentlichen falls Webform "giftcard".',
         'field_seo' => '{"robots":"noindex, nofollow, noarchive, nosnippet, noimageindex"}',
       ]);
       $node->addTranslation('en', [
@@ -223,7 +286,7 @@ final class PostCreateProjectCommands extends DrushCommands {
         'uid' => 1,
         'status' => 0,
         EntityBusinessrules::FIELD_INTERNAL_ID => 'webform_sent_giftcard',
-        EntityBusinessrules::FIELD_INTERAL_NOTES => 'Versteckt, aktivieren bei Bedarf. Diese Notiz löschen nach Prüfung.',
+        EntityBusinessrules::FIELD_INTERAL_NOTES => '@todo: Veröffentlichen falls Webform "giftcard".',
         'field_seo' => '{"robots":"noindex, nofollow, noarchive, nosnippet, noimageindex"}',
       ]);
       $node->save();
@@ -256,7 +319,7 @@ final class PostCreateProjectCommands extends DrushCommands {
         'uid' => 1,
         'status' => 0,
         EntityBusinessrules::FIELD_INTERNAL_ID => 'webform_sent_table',
-        EntityBusinessrules::FIELD_INTERAL_NOTES => 'Versteckt, aktivieren bei Bedarf. Diese Notiz löschen nach Prüfung.',
+        EntityBusinessrules::FIELD_INTERAL_NOTES => '@todo: Veröffentlichen falls Webform "table".',
         'field_seo' => '{"robots":"noindex, nofollow, noarchive, nosnippet, noimageindex"}',
       ]);
       $node->addTranslation('en', [
@@ -264,7 +327,7 @@ final class PostCreateProjectCommands extends DrushCommands {
         'uid' => 1,
         'status' => 0,
         EntityBusinessrules::FIELD_INTERNAL_ID => 'webform_sent_table',
-        EntityBusinessrules::FIELD_INTERAL_NOTES => 'Versteckt, aktivieren bei Bedarf. Diese Notiz löschen nach Prüfung.',
+        EntityBusinessrules::FIELD_INTERAL_NOTES => '@todo: Veröffentlichen falls Webform "table".',
         'field_seo' => '{"robots":"noindex, nofollow, noarchive, nosnippet, noimageindex"}',
       ]);
       $node->save();
@@ -297,7 +360,7 @@ final class PostCreateProjectCommands extends DrushCommands {
         'uid' => 1,
         'status' => 0,
         EntityBusinessrules::FIELD_INTERNAL_ID => 'webform_sent_seminar',
-        EntityBusinessrules::FIELD_INTERAL_NOTES => 'Versteckt, aktivieren bei Bedarf. Diese Notiz löschen nach Prüfung.',
+        EntityBusinessrules::FIELD_INTERAL_NOTES => '@todo: Veröffentlichen falls Webform "seminar".',
         'field_seo' => '{"robots":"noindex, nofollow, noarchive, nosnippet, noimageindex"}',
       ]);
       $node->addTranslation('en', [
@@ -305,7 +368,7 @@ final class PostCreateProjectCommands extends DrushCommands {
         'uid' => 1,
         'status' => 0,
         EntityBusinessrules::FIELD_INTERNAL_ID => 'webform_sent_seminar',
-        EntityBusinessrules::FIELD_INTERAL_NOTES => 'Versteckt, aktivieren bei Bedarf. Diese Notiz löschen nach Prüfung.',
+        EntityBusinessrules::FIELD_INTERAL_NOTES => '@todo: Veröffentlichen falls Webform "seminar".',
         'field_seo' => '{"robots":"noindex, nofollow, noarchive, nosnippet, noimageindex"}',
       ]);
       $node->save();
@@ -334,10 +397,10 @@ final class PostCreateProjectCommands extends DrushCommands {
       $node = Node::create([
         'title' => 'Impressum',
         'type' => 'page',
-        EntityBusinessrules::FIELD_INTERNAL_ID => 'imprint',
-        EntityBusinessrules::FIELD_INTERAL_NOTES => 'Muss befüllt werden. Diese Notiz löschen nach Prüfung.',
         'langcode' => 'de',
         'uid' => 1,
+        EntityBusinessrules::FIELD_INTERNAL_ID => 'imprint',
+        EntityBusinessrules::FIELD_INTERAL_NOTES => '@todo: Befüllen.',
       ]);
       $node->save();
       $nodeAlias = PathAlias::create([
@@ -365,10 +428,11 @@ final class PostCreateProjectCommands extends DrushCommands {
       $node = Node::create([
         'title' => 'Datenschutz',
         'type' => 'page',
-        EntityBusinessrules::FIELD_INTERNAL_ID => 'privacy',
-        EntityBusinessrules::FIELD_INTERAL_NOTES => 'Muss befüllt werden. Diese Notiz löschen nach Prüfung.',
         'langcode' => 'de',
         'uid' => 1,
+        EntityBusinessrules::FIELD_INTERNAL_ID => 'privacy',
+        EntityBusinessrules::FIELD_INTERAL_NOTES => '@todo: Befüllen.',
+        'field_seo' => '{"robots":"noindex, nofollow, noarchive, nosnippet, noimageindex"}',
       ]);
       $node->save();
       $nodeAlias = PathAlias::create([
@@ -418,7 +482,7 @@ final class PostCreateProjectCommands extends DrushCommands {
         'uid' => 1,
         'status' => 1,
         EntityBusinessrules::FIELD_INTERNAL_ID => 'error_403',
-        EntityBusinessrules::FIELD_INTERAL_NOTES => 'Muss befüllt werden. Diese Notiz löschen nach Prüfung.',
+        EntityBusinessrules::FIELD_INTERAL_NOTES => '@todo: Befüllen.',
         'field_seo' => '{"robots":"noindex, nofollow, noarchive, nosnippet, noimageindex"}',
       ]);
       $node->save();
@@ -447,7 +511,7 @@ final class PostCreateProjectCommands extends DrushCommands {
         'uid' => 1,
         'status' => 1,
         EntityBusinessrules::FIELD_INTERNAL_ID => 'error_404',
-        EntityBusinessrules::FIELD_INTERAL_NOTES => 'Muss befüllt werden. Diese Notiz löschen nach Prüfung.',
+        EntityBusinessrules::FIELD_INTERAL_NOTES => '@todo: Befüllen.',
         'field_seo' => '{"robots":"noindex, nofollow, noarchive, nosnippet, noimageindex"}',
       ]);
       $node->save();
@@ -481,15 +545,6 @@ final class PostCreateProjectCommands extends DrushCommands {
           'format' => 'full_html',
         ]
       ]);
-      $block->addTranslation('en', [
-        'status' => 1,
-        'reuseable' => 1,
-        EntityBusinessrules::FIELD_INTERNAL_ID => 'popup_frontpage',
-        'body' => [
-          'value' => '<p>A popup window on the frontpage.</p>',
-          'format' => 'full_html',
-        ]
-      ]);
       $block->save();
 
       /** @var \Drupal\Core\Config\Entity\ConfigEntityInterface $blockConfig */
@@ -500,6 +555,7 @@ final class PostCreateProjectCommands extends DrushCommands {
           strpos($blockConfig->get('plugin'), 'block_content:' === 0)
       ) {
         $existingUuid = str_replace('block_content:', '', $blockConfig->get('plugin'));
+        // Newly created block_content entity does not match the existing block config (block layout).
         $block->set('uuid', $existingUuid)->save();
       }
     }
