@@ -127,6 +127,23 @@ class RoboFile extends \Robo\Tasks
   }
 
   /**
+   * Initializes and connects a local Drupal installtion with a Bitbucket repo
+   */
+  public function kickoffInitGit(ConsoleIO $io) {
+    $this->ensureDevDir();
+    $projectName = $this->detectDevProjectName();
+    if (!is_dir('./web/sites/default/files/')) {
+      throw new AbortTasksException('Drupal "files" storage directory not found. Run "robo kickoff:install-drupal" first.');
+    }
+    $this->stopOnFail(TRUE);
+    $this->_exec("git init");
+    $this->_exec("git remote add origin git@bitbucket.org:webtourismus/{$projectName}.git");
+    $this->_exec("./vendor/bin/drush config:export -y --commit --message=\"Initial commit\"");
+    $this->_exec("git push origin master");
+    $io->say("Initial commit to Bitbucket done.");
+  }
+
+  /**
    * Like "drush config:export && git push"
    */
   function push(ConsoleIO $io, $message="") {
