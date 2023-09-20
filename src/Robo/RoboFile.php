@@ -118,6 +118,8 @@ class RoboFile extends \Robo\Tasks
     $this->_exec("./vendor/bin/drush locale:import de modules/contrib/gin_custom/translations/gin_custom.de.po");
     $this->_exec("./vendor/bin/drush locale:import de modules/contrib/seasonal_paragraphs/translations/seasonal_paragraphs.de.po");
     $this->_exec("./vendor/bin/drush locale:import de modules/custom/backend/translations/backend.de.po");
+    // create TailwindCSS classes used by Twig layouts and backend modules for Gin theme
+    $this->_exec("./vendor/bin/drush css");
     $io->say("Site {$projectName} was created.");
   }
 
