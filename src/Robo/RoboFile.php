@@ -14,37 +14,66 @@ class RoboFile extends \Robo\Tasks
   public const DEV_ENV_DIR_PATTERN = '|^/var/www/vhosts/(([a-z0-9\-_]+)\.webtourismus\.at)/(([a-z0-9\-_]+)\.\1)/?$|';
 
   /**
-   * The directory pattern for all projects on the prod environment.
+   * The relative/symlinked directory pattern for all projects on the prod environment.
    */
-  public const PROD_ENV_DIR_PATTERN = '|^/user/home/([a-z0-9\-_]+)/public_html/?$|';
+  public const PROD_ENV_DIR_PATTERN_REL = '|^/user/home/([a-z0-9\-_]+)/public_html/?$|';
+  /**
+   * The absolute directory path pattern for all projects on the prod environment.
+   */
+  public const PROD_ENV_DIR_PATTERN_ABS = '|^/usr/www/users/([a-z0-9\-_]+)/?$|';
 
   public function __construct() {
     $this->ensureProjectDir();
   }
 
   /**
+   * Returns true if the script is run inside a project root dir on the dev server.
+   */
+  protected function isDevDir(): bool {
+    if (preg_match(self::DEV_ENV_DIR_PATTERN, dirname(__FILE__)) !== 1) {
+      return FALSE;
+    }
+    return TRUE;
+  }
+
+  /**
    * Ensures the script is run inside a project root dir on the dev server.
+   * @throws AbortTasksException
    */
   protected function ensureDevDir() {
-    if (preg_match(self::DEV_ENV_DIR_PATTERN, dirname(__FILE__)) !== 1) {
+    if (!$this->isDevDir()) {
       throw new AbortTasksException('This script must be executed in the root directory of a Drupal project on the dev server.');
     }
   }
 
   /**
+   * Returns true if the script is run inside a project root dir on the prod server.
+   */
+  protected function isProdDir(): bool {
+    if (preg_match(self::PROD_ENV_DIR_PATTERN_REL, dirname(__FILE__)) !== 1 &&
+      preg_match(self::PROD_ENV_DIR_PATTERN_ABS, dirname(__FILE__)) !== 1
+    ) {
+      return FALSE;
+    }
+    return TRUE;
+  }
+
+  /**
    * Ensures the script is run inside a project root dir on the prod server.
+   * @throws AbortTasksException
    */
   protected function ensureProdDir() {
-    if (preg_match(self::DEV_ENV_DIR_PATTERN, dirname(__FILE__)) !== 1) {
+    if (!$this->isProdDir()) {
       throw new AbortTasksException('This script must be executed in the root directory of a Drupal project on the dev server.');
     }
   }
 
+  /**
+   * Ensures the script is run inside a webtourismus/drupal-starterkit project dir.
+   * @throws AbortTasksException
+   */
   protected function ensureProjectDir() {
-    if (
-      preg_match(self::PROD_ENV_DIR_PATTERN, dirname(__FILE__)) !== 1 &&
-      preg_match(self::DEV_ENV_DIR_PATTERN, dirname(__FILE__)) !== 1
-    ) {
+    if (!$this->isDevDir() && !$this->isProdDir()) {
       throw new AbortTasksException('This script must be executed in the root directory of a webtourismus/drupal-starterkit project.');
     }
   }
@@ -99,6 +128,7 @@ class RoboFile extends \Robo\Tasks
    */
   public function kickoffInstallDrupal(ConsoleIO $io) {
     $this->ensureDevDir();
+    $familyName = $this->detectDevFamilyName();
     $projectName = $this->detectDevProjectName();
     if (!file_exists('./.env') || !file_exists('./web/sites/default/settings.php')) {
       throw new AbortTasksException('"settings.php" or ".env" file is missing. Run "robo kickoff:init-dev" first.');
@@ -111,6 +141,14 @@ class RoboFile extends \Robo\Tasks
     // ensure variables_order in php.ini includes the "E" option, e.g. variables_order = "EGPCS"
     $this->_exec("./vendor/bin/drush site:install --existing-config --site-name=\"{$projectName}\" --account-name=entwicklung --account-mail=entwicklung@webtourismus.at --no-interaction");
     $this->_exec("chmod -R u+w ./web/sites/default");
+    // remove hardcoded $database settings created by drush site:install again
+    $dbName = "{$familyName}_{$projectName}";
+    $this->taskReplaceInFile('./web/sites/default/settings.php')
+      ->regex('/\$databases\[\'default\'\]\[\'default\'\]\s*=\s*array\s*\(\s*\'database\'\s*=>\s*\'' . $dbName . '\'.+\,\s*\);/s')
+      ->to('')
+      ->run();
+    $this->_exec("./vendor/bin/drush twig:debug on");
+    $this->_exec('./vendor/bin/drush state:set disable_rendered_output_cache_bins 1 --input-format=integer');
     $this->_exec("./vendor/bin/drush cache:rebuild");
     $this->_exec("./vendor/bin/drush maintenance:create-default-content -y");
     // import translations for modules not available on drupal.org
@@ -175,7 +213,7 @@ class RoboFile extends \Robo\Tasks
         throw new AbortTasksException('Environment is ahead of origin repository.');
       }
     }
-    exec("drush config:status", $output);
+    exec("./vendor/bin/drush config:status", $output);
     $dirty = TRUE;
     foreach($output as $line) {
       if (str_contains($line, 'No differences between DB and sync directory.')) {
@@ -184,8 +222,8 @@ class RoboFile extends \Robo\Tasks
       }
     }
     if ($dirty) {
-      $answer = $io->ask('There are config changes between DB and sync directory. If you continue you\'ll loose changes in active config. Continue? (y/n) ', 'n');
-      if (strtolower($answer) !== 'y') {
+      $answer = $io->confirm('There are config changes between DB and sync directory. If you continue you\'ll loose changes in active config. Continue? ', FALSE);
+      if (!$answer) {
         throw new AbortTasksException('Aborted due changes in active config.');
       }
     }
@@ -196,6 +234,23 @@ class RoboFile extends \Robo\Tasks
     $this->_exec("./composer.phar install --no-dev --prefer-dist");
     $this->_exec("./vendor/bin/drush deploy");
     $this->_exec("./vendor/bin/drush state:set system.maintenance_mode 0");
+    if ($this->isProdDir()) {
+      exec('./vendor/bin/drush state:get twig_debug', $output);
+      foreach($output as $line) {
+        if ($line == '1') {
+          $this->_exec('./vendor/bin/drush twig:debug off');
+          $this->_exec('./vendor/bin/drush state:set disable_rendered_output_cache_bins 0 --input-format=integer');
+          $this->_exec('./vendor/bin/drush cache:rebuild');
+          break;
+        }
+      }
+      $curlHandle = curl_init();
+      curl_setopt($curlHandle, CURLOPT_URL, $_ENV['PROD_URI']);
+      curl_exec($curlHandle);
+      if (curl_getinfo($curlHandle, CURLINFO_HTTP_CODE) !== 200) {
+        throw new AbortTasksException("Production website not available after pulling! Check {$_ENV['PROD_URI']} in your browser!");
+      }
+    }
     $io->say("Pulled everything from origin repository.");
   }
 
@@ -203,6 +258,80 @@ class RoboFile extends \Robo\Tasks
    * Copies a project from dev environment to prod environment (not yet implemented)
    */
   public function golive(ConsoleIO $io) {
-    $io->say("Not yet implemented.");
+    $this->ensureDevDir();
+    $this->stopOnFail(TRUE);
+    $io->say('Before starting the launch process, make sure that:');
+    $io->listing([
+      'Public SSH key of dev server is already provided on the prod server.',
+      'Public SSH key of prod server is already provided on Bitbucket.',
+      'PHP is configured on prod server (remote URLs, memory limit, upload size, max_input_vars, ImageMagick)',
+    ]);
+    $sshHost = $io->choice('Select live host', ['dedi103.your-server.de', 'dedi1661.your-server.de'], $_ENV['PROD_SSH_HOST'] ?? NULL);
+    $sshUser = $io->ask('Enter SSH username on prod host', $_ENV['PROD_SSH_USER'] ?? NULL);
+    $domain = $io->ask('Enter production domain (usually starting with www.)', $_ENV['PROD_DOMAIN'] ?? NULL);
+    $this->taskWriteToFile('.env')
+      ->append(TRUE)
+      // if the setting exists, replace it
+      ->regexReplace('/^PROD_SSH_HOST=.*$/m', "PROD_SSH_HOST=\"{$sshHost}\"")
+      // otherwise append the setting
+      ->appendUnlessMatches('/^PROD_SSH_HOST=.*$/m', "PROD_SSH_HOST=\"{$sshHost}\"\n")
+      ->regexReplace('/^PROD_SSH_USER=.*$/m', "PROD_SSH_USER=\"{$sshUser}\"")
+      ->appendUnlessMatches('/^PROD_SSH_USER=.*$/m', "PROD_SSH_USER=\"{$sshUser}\"\n")
+      ->regexReplace('/^PROD_DOMAIN=.*$/m', "PROD_DOMAIN=\"{$domain}\"")
+      ->appendUnlessMatches('/^PROD_DOMAIN=.*$/m', "PROD_DOMAIN=\"{$domain}\"\n")
+      ->run();
+    $this->_exec('cp .env.example .env.prod');
+    $dbName = $io->ask('Enter database name on prod', "{$sshUser}_db1");
+    $dbUser = $io->ask('Enter database user on prod', "{$sshUser}_1");
+    $dbPass = $io->ask('Enter database password on prod');
+    $this->taskWriteToFile('.env.prod')
+      ->append(TRUE)
+      ->regexReplace('/^ENV=.*$/m', "ENV=\"prod\"")
+      ->regexReplace('/^PROJECT_NAME=.*$/m', "PROJECT_NAME=\"{$_ENV['PROJECT_NAME']}\"")
+      ->regexReplace('/^PROD_SSH_HOST=.*$/m', "PROD_SSH_HOST=\"{$sshHost}\"")
+      ->regexReplace('/^PROD_SSH_USER=.*$/m', "PROD_SSH_USER=\"{$sshUser}\"")
+      ->regexReplace('/^PROD_DOMAIN=.*$/m', "PROD_DOMAIN=\"{$domain}\"")
+      ->regexReplace('/^DB_NAME=.*$/m', "DB_NAME=\"{$dbName}\"")
+      ->regexReplace('/^DB_USER=.*$/m', "DB_USER=\"{$dbUser}\"")
+      ->regexReplace('/^DB_PASS=.*$/m', "DB_PASS=\"{$dbPass}\"")
+      ->run();
+    $io->newLine(3);
+    $io->say('Please verify .env settings for prod');
+    $io->block(file_get_contents('.env.prod'), NULL, 'fg=yellow');
+    $answer = $io->confirm('Are the settings above correct?');
+    if (!$answer) {
+      throw new AbortTasksException('Aborted due incorrect settings.');
+    }
+    $date = date('Y-m-d H:i:s');
+    $message = "===== GO LIVE on {$date} =====";
+    $this->push($io, $message);
+    $this->_exec('./vendor/bin/drush @prod site:ssh "rm index.html || true"');
+    $this->_exec('./vendor/bin/drush @prod site:ssh "ssh-keyscan bitbucket.org >> ~/.ssh/known_hosts"');
+    $this->_exec('./vendor/bin/drush @prod site:ssh "echo -e \"export PATH=\\\$PATH:./vendor/bin\n\" >> ~/.bashrc"');
+    $this->_exec('./vendor/bin/drush @prod site:ssh "git clone git@bitbucket.org:webtourismus/' . $_ENV['PROJECT_NAME'] .'.git ."');
+    $this->_exec('./vendor/bin/drush @prod site:ssh "./composer.phar install --no-dev --prefer-dist"');
+    $this->_exec('./vendor/bin/drush core:rsync ./ @prod:. --exclude-paths=.git:.vscode:.idea:vendor:web/core:web/modules/contrib:web/themes/contrib:web/libraries');
+    $this->_exec('./vendor/bin/drush @prod site:ssh "chmod o+rx ."');
+    $this->_exec('./vendor/bin/drush @prod site:ssh "cp .env.prod .env"');
+    $this->_exec('./vendor/bin/drush @prod site:ssh "rm .env.prod"');
+    $this->_exec('rm .env.prod');
+    $this->_exec('./vendor/bin/drush sql:sync @self @prod');
+    $this->_exec('./vendor/bin/drush @prod cache:rebuild');
+    $this->_exec('./vendor/bin/drush @prod state:set twig_debug 0 --input-format=integer');
+    $this->_exec('./vendor/bin/drush @prod state:set twig_cache_disable 0 --input-format=integer');
+    $this->_exec('./vendor/bin/drush @prod state:set disable_rendered_output_cache_bins 0 --input-format=integer');
+    $this->_exec('./vendor/bin/drush @prod cache:rebuild');
+    $io->say('Files and database copied to prod server. To finish go live:');
+    $io->listing([
+      'Set Apache docroot to "/web" on prod server.',
+      'Install Let\'s encrypt SSL certificate on prod server.',
+      'Add Drupal\'s cronjob on prod server.',
+    ]);
+    $io->say('Optional checks:');
+    $io->listing([
+      'Webcam / FTP account needed?',
+      'Deactivate old Drupal project on dev server?',
+      'Redirect Addon Domains?',
+    ]);
   }
 }
