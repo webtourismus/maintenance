@@ -255,7 +255,7 @@ class RoboFile extends \Robo\Tasks
   }
 
   /**
-   * Copies a project from dev environment to prod environment (not yet implemented)
+   * Copies a project from dev server to prod server
    */
   public function golive(ConsoleIO $io) {
     $this->ensureDevDir();
@@ -265,6 +265,7 @@ class RoboFile extends \Robo\Tasks
       'Public SSH key of dev server is already provided on the prod server.',
       'Public SSH key of prod server is already provided on Bitbucket.',
       'PHP is configured on prod server (remote URLs, memory limit, upload size, max_input_vars, ImageMagick)',
+      'Backup of old site (files + database) is saved in prod user\'s home directory.',
     ]);
     $sshHost = $io->choice('Select live host', ['dedi103.your-server.de', 'dedi1661.your-server.de'], $_ENV['PROD_SSH_HOST'] ?? NULL);
     $sshUser = $io->ask('Enter SSH username on prod host', $_ENV['PROD_SSH_USER'] ?? NULL);
