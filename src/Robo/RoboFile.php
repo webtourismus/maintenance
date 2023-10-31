@@ -173,7 +173,9 @@ class RoboFile extends \Robo\Tasks
     $this->stopOnFail(TRUE);
     $this->_exec("git init");
     $this->_exec("git remote add origin git@bitbucket.org:webtourismus/{$projectName}.git");
-    $this->_exec("./vendor/bin/drush config:export -y --commit --message=\"Initial commit\"");
+    $this->_exec("./vendor/bin/drush config:export -y");
+    $this->_exec("git add -A");
+    $this->_exec("git commit -m=\"Initial commit\"");
     $this->_exec("git push origin master");
     $io->say("Initial commit to Bitbucket done.");
   }
@@ -197,7 +199,9 @@ class RoboFile extends \Robo\Tasks
       $message = $io->ask('Commit message: ');
     }
     $this->stopOnFail(TRUE);
-    $this->_exec("./vendor/bin/drush config:export -y --commit --message=\"{$message}\"");
+    $this->_exec("./vendor/bin/drush config:export -y");
+    $this->_exec("git add -A");
+    $this->_exec("git commit -m=\"{$message}\"");
     $this->_exec("git push origin master");
     $io->say("Pushed to origin repository.");
   }
@@ -316,7 +320,7 @@ class RoboFile extends \Robo\Tasks
     $this->_exec('./vendor/bin/drush @prod site:ssh "cp .env.prod .env"');
     $this->_exec('./vendor/bin/drush @prod site:ssh "rm .env.prod"');
     $this->_exec('rm .env.prod');
-    $this->_exec('./vendor/bin/drush sql:sync @self @prod');
+    $this->_exec('./vendor/bin/drush sql:sync @self @prod --uri=' . $domain);
     $this->_exec('./vendor/bin/drush @prod cache:rebuild');
     $this->_exec('./vendor/bin/drush @prod state:set twig_debug 0 --input-format=integer');
     $this->_exec('./vendor/bin/drush @prod state:set twig_cache_disable 0 --input-format=integer');
