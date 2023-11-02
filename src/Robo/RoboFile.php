@@ -201,7 +201,7 @@ class RoboFile extends \Robo\Tasks
     $this->stopOnFail(TRUE);
     $this->_exec("./vendor/bin/drush config:export -y");
     $this->_exec("git add -A");
-    $this->_exec("git commit -m=\"{$message}\"");
+    $this->_exec("git diff-index --quiet HEAD || git commit -m=\"{$message}\"");
     $this->_exec("git push origin master");
     $io->say("Pushed to origin repository.");
   }
@@ -218,14 +218,8 @@ class RoboFile extends \Robo\Tasks
       }
     }
     exec("./vendor/bin/drush config:status", $output);
-    $dirty = TRUE;
-    foreach($output as $line) {
-      if (str_contains($line, 'No differences between DB and sync directory.')) {
-        $dirty = FALSE;
-        break;
-      }
-    }
-    if ($dirty) {
+    $line = array_shift($output);
+    if (!empty($line)) {
       $answer = $io->confirm('There are config changes between DB and sync directory. If you continue you\'ll loose changes in active config. Continue? ', FALSE);
       if (!$answer) {
         throw new AbortTasksException('Aborted due changes in active config.');
@@ -250,7 +244,8 @@ class RoboFile extends \Robo\Tasks
       }
       $curlHandle = curl_init();
       curl_setopt($curlHandle, CURLOPT_URL, $_ENV['PROD_URI']);
-      curl_exec($curlHandle);
+      curl_setopt($curlHandle, CURLOPT_RETURNTRANSFER, TRUE);
+      $html = curl_exec($curlHandle);
       if (curl_getinfo($curlHandle, CURLINFO_HTTP_CODE) !== 200) {
         throw new AbortTasksException("Production website not available after pulling! Check {$_ENV['PROD_URI']} in your browser!");
       }
