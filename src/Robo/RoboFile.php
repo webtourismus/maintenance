@@ -217,7 +217,7 @@ class RoboFile extends \Robo\Tasks
         throw new AbortTasksException('Environment is ahead of origin repository.');
       }
     }
-    exec("./vendor/bin/drush config:status", $output);
+    exec("./vendor/bin/drush config:status --format=json", $output);
     $line = array_shift($output);
     if (!empty($line)) {
       $answer = $io->confirm('There are config changes between DB and sync directory. If you continue you\'ll loose changes in active config. Continue? ', FALSE);
