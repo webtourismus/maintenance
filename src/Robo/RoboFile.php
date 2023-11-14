@@ -217,9 +217,11 @@ class RoboFile extends \Robo\Tasks
         throw new AbortTasksException('Environment is ahead of origin repository.');
       }
     }
+    unset($output);
     exec("./vendor/bin/drush config:status --format=json", $output);
     $line = array_shift($output);
     if (!empty($line)) {
+      $io->block($output, NULL, 'fg=yellow');
       $answer = $io->confirm('There are config changes between DB and sync directory. If you continue you\'ll loose changes in active config. Continue? ', FALSE);
       if (!$answer) {
         throw new AbortTasksException('Aborted due changes in active config.');
@@ -233,6 +235,7 @@ class RoboFile extends \Robo\Tasks
     $this->_exec("./vendor/bin/drush deploy");
     $this->_exec("./vendor/bin/drush state:set system.maintenance_mode 0");
     if ($this->isProdDir()) {
+      unset($output);
       exec('./vendor/bin/drush state:get twig_debug', $output);
       foreach($output as $line) {
         if ($line == '1') {
