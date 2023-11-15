@@ -218,11 +218,11 @@ class RoboFile extends \Robo\Tasks
       }
     }
     unset($output);
-    exec("./vendor/bin/drush config:status --format=json", $output);
+    exec("./vendor/bin/drush config:status --format=table", $output);
     $line = array_shift($output);
-    if (!empty($line)) {
+    if (!empty($line) && strpos($line, 'No differences between DB and sync directory.') === FALSE) {
       $io->block($output, NULL, 'fg=yellow');
-      $answer = $io->confirm('There are config changes between DB and sync directory. If you continue you\'ll loose changes in active config. Continue? ', FALSE);
+      $answer = $io->confirm('There are config changes between active config in DB and sync directory. If you continue you\'ll loose changes in active config. Continue? ', FALSE);
       if (!$answer) {
         throw new AbortTasksException('Aborted due changes in active config.');
       }
