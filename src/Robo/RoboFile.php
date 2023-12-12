@@ -282,6 +282,8 @@ class RoboFile extends \Robo\Tasks
       ->appendUnlessMatches('/^PROD_SSH_USER=.*$/m', "PROD_SSH_USER=\"{$sshUser}\"\n")
       ->regexReplace('/^PROD_DOMAIN=.*$/m', "PROD_DOMAIN=\"{$domain}\"")
       ->appendUnlessMatches('/^PROD_DOMAIN=.*$/m', "PROD_DOMAIN=\"{$domain}\"\n")
+      ->regexReplace('/^PROD_URI=.*$/m', "PROD_URI=\"https://\${PROD_DOMAIN}\"")
+      ->appendUnlessMatches('/^PROD_URI=.*$/m', "PROD_URI=https://\$\"{PROD_DOMAIN}\"\n")
       ->run();
     $this->_exec('cp .env.example .env.prod');
     $dbName = $io->ask('Enter database name on prod', "{$sshUser}_db1");
@@ -318,7 +320,7 @@ class RoboFile extends \Robo\Tasks
     $this->_exec('./vendor/bin/drush @prod site:ssh "cp .env.prod .env"');
     $this->_exec('./vendor/bin/drush @prod site:ssh "rm .env.prod"');
     $this->_exec('rm .env.prod');
-    $this->_exec('./vendor/bin/drush sql:sync @self @prod --uri=' . $domain);
+    $this->_exec('./vendor/bin/drush sql:sync @self @prod');
     $this->_exec('./vendor/bin/drush @prod cache:rebuild');
     $this->_exec('./vendor/bin/drush @prod state:set twig_debug 0 --input-format=integer');
     $this->_exec('./vendor/bin/drush @prod state:set twig_cache_disable 0 --input-format=integer');
