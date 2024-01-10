@@ -358,7 +358,7 @@ class RoboFile extends \Robo\Tasks
     $this->ensureDevDir();
     $this->stopOnFail(TRUE);
 
-    $starterkit = json_decode(file_get_contents('~/_dev/drupal-starterkit/composer.json'));
+    $starterkit = json_decode(file_get_contents('../_dev/drupal-starterkit/composer.json'));
     $project = json_decode(file_get_contents('./composer.json'));
 
     /* sync repo sources */
@@ -369,9 +369,6 @@ class RoboFile extends \Robo\Tasks
     /* sync mandatory dependencies */
     foreach ($starterkit->require as $key => $item) {
       $project->require->{$key} = $item;
-    }
-    foreach ($starterkit->{'require-dev'} as $key => $item) {
-      $project->{'require-dev'}->{$key} = $item;
     }
 
     /**
@@ -386,7 +383,7 @@ class RoboFile extends \Robo\Tasks
     $allMethods = get_class_methods($this);
     $onetimeSyncMethods = array_filter($allMethods, fn($method) => strpos($method, 'syncOnce_') === 0);
     foreach ($onetimeSyncMethods as $method) {
-      $reflectionMethod = new $reflectionMethod($this::class, $method);
+      $reflectionMethod = new ReflectionMethod($this::class, $method);
       $reflectionMethod->invoke($this, $project);
     }
 
@@ -404,12 +401,12 @@ class RoboFile extends \Robo\Tasks
    * "patches.json" file. After ^1.0.2, only project-specific patches may remain in the project's
    * "composer.json"->extras->patches section.
    */
-  protected function syncOnce_removeInternalPatches(stdClass &$composerJson) {
+  protected function syncOnce_removeInternalPatches(stdClass $composerJson) {
     if (!InstalledVersions::satisfies(new VersionParser, 'webtourismus/drupal-metapackage', '<=1.0.1')) {
       return;
     }
-    if (property_exists($composerJson->extras, 'patches')) {
-      unset($composerJson->extras->patches);
+    if (property_exists($composerJson->extra, 'patches')) {
+      unset($composerJson->extra->patches);
     }
   }
 }
