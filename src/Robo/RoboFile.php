@@ -372,6 +372,16 @@ class RoboFile extends \Robo\Tasks
     }
 
     /**
+     * sync mandatory patches
+     * @todo: find out how to remove obsolete default patches, while still keeping project-only-patches.
+     */
+
+    $this->_exec("cp ~/_dev/drupal-starterkit/private/patches/* ./private/patches/");
+    foreach ($starterkit->extra->patches as $key => $item) {
+      $project->extra->patches->{$key} = $item;
+    }
+
+    /**
      * Onestime sync methods:
      * - all method names starting with "syncOnce_"
      * - receive the project's composer.json as plain object, will be written to disk.
@@ -387,26 +397,19 @@ class RoboFile extends \Robo\Tasks
       $reflectionMethod->invoke($this, $project);
     }
 
-    file_put_contents('./composer.json', json_encode($project, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-
-    /* sync patches */
-    $this->_exec("cp ~/_dev/drupal-starterkit/private/patches/* ./private/patches/");
-    $this->_exec("cp ./private/patches/patches.json ./");
+    $jsonIndentedBy4 = json_encode($project, JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT);
+    $jsonIndentedBy2 = preg_replace('/^(  +?)\\1(?=[^ ])/m', '$1', $jsonIndentedBy4);
+    file_put_contents('./composer.json', $jsonIndentedBy2);
 
     $this->_exec("./composer.phar update --root-reqs -W --no-dev --prefer-dist -o");
   }
 
-  /**
-   * While updating to webtourismus/metapackage:^1.0.2, all default patches where moved to an external
-   * "patches.json" file. After ^1.0.2, only project-specific patches may remain in the project's
-   * "composer.json"->extras->patches section.
-   */
-  protected function syncOnce_removeInternalPatches(stdClass $composerJson) {
+  protected function ___EXAMPLE___syncOnce_removeObsoltePatch(stdClass $composerJson) {
     if (!InstalledVersions::satisfies(new VersionParser, 'webtourismus/drupal-metapackage', '<=1.0.1')) {
       return;
     }
-    if (property_exists($composerJson->extra, 'patches')) {
-      unset($composerJson->extra->patches);
+    if (property_exists($composerJson->extra->patches, '1234 - obsolete patch')) {
+      unset($composerJson->extra->patches->{'1234 - obsolete patch'});
     }
   }
 }
