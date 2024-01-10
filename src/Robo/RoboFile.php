@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use Robo\Symfony\ConsoleIO;
 use Robo\Exception\AbortTasksException;
+use Composer\InstalledVersions;
+use Composer\Semver\VersionParser;
 
 class RoboFile extends \Robo\Tasks
 {
@@ -158,7 +160,13 @@ class RoboFile extends \Robo\Tasks
     $this->_exec("./vendor/bin/drush locale:import de modules/custom/backend/translations/backend.de.po");
     // create TailwindCSS classes used by Twig layouts and backend modules for Gin theme
     $this->_exec("./vendor/bin/drush css");
-    $io->say("Site {$projectName} was created.");
+    $io->say("Site {$projectName} was created. Have fun with your project. Some hints:");
+    $io->listing([
+      'Start with designing the custom frontend theme.',
+      'Use "robo push" & "robo pull" often!',
+      'Use "drush css" update frontend styles in the admin theme (like headers or buttons in CKeditor).',
+      'Use "robo sync" to keep the project\'s composer.json in sync with updates in the starterkit (like patches).',
+    ]);
   }
 
   /**
@@ -200,6 +208,7 @@ class RoboFile extends \Robo\Tasks
     }
     $this->stopOnFail(TRUE);
     $this->_exec("./vendor/bin/drush config:export -y");
+    $this->_exec("./vendor/bin/drush backend:css");
     $this->_exec("git add -A");
     $this->_exec("git diff-index --quiet HEAD || git commit -m=\"{$message}\"");
     $this->_exec("git push origin master");
@@ -231,8 +240,10 @@ class RoboFile extends \Robo\Tasks
     $this->_exec("./vendor/bin/drush state:set system.maintenance_mode 1");
     $this->_exec("git pull origin master");
     $this->_exec("git clean -fd config/sync");
-    $this->_exec("./composer.phar install --no-dev --prefer-dist");
+    $optimizeAutoloader = "";
+    $this->_exec("./composer.phar install --no-dev --prefer-dist -o");
     $this->_exec("./vendor/bin/drush deploy");
+    $this->_exec("./vendor/bin/drush backend:css");
     $this->_exec("./vendor/bin/drush state:set system.maintenance_mode 0");
     if ($this->isProdDir()) {
       unset($output);
@@ -339,4 +350,67 @@ class RoboFile extends \Robo\Tasks
       'Redirect Addon Domains?',
     ]);
   }
+
+  /**
+   * Re-syncs the root project's composer.json with the starterkit.
+   */
+  public function sync(ConsoleIO $io) {
+    $this->ensureDevDir();
+    $this->stopOnFail(TRUE);
+
+    $starterkit = json_decode(file_get_contents('~/_dev/drupal-starterkit/composer.json'));
+    $project = json_decode(file_get_contents('./composer.json'));
+
+    /* sync repo sources */
+    foreach ($starterkit->repositories as $key => $item) {
+      $project->repositories->{$key} = $item;
+    }
+
+    /* sync mandatory dependencies */
+    foreach ($starterkit->require as $key => $item) {
+      $project->require->{$key} = $item;
+    }
+    foreach ($starterkit->{'require-dev'} as $key => $item) {
+      $project->{'require-dev'}->{$key} = $item;
+    }
+
+    /**
+     * Onestime sync methods:
+     * - all method names starting with "syncOnce_"
+     * - receive the project's composer.json as plain object, will be written to disk.
+     *
+     * The received object already has the new metapackage version set, but is not yet persisted/installed.
+     * To get currently installed versions, either manually load "composer.json" file from disk
+     * or see https://getcomposer.org/doc/07-runtime.md#knowing-whether-package-x-is-installed-in-version-y
+     */
+    $allMethods = get_class_methods($this);
+    $onetimeSyncMethods = array_filter($allMethods, fn($method) => strpos($method, 'syncOnce_') === 0);
+    foreach ($onetimeSyncMethods as $method) {
+      $reflectionMethod = new $reflectionMethod($this::class, $method);
+      $reflectionMethod->invoke($this, $project);
+    }
+
+    file_put_contents('./composer.json', json_encode($project, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+
+    /* sync patches */
+    $this->_exec("cp ~/_dev/drupal-starterkit/private/patches/* ./private/patches/");
+    $this->_exec("cp ./private/patches/patches.json ./");
+
+    $this->_exec("./composer.phar update --root-reqs -W --no-dev --prefer-dist -o");
+  }
+
+  /**
+   * While updating to webtourismus/metapackage:^1.0.2, all default patches where moved to an external
+   * "patches.json" file. After ^1.0.2, only project-specific patches may remain in the project's
+   * "composer.json"->extras->patches section.
+   */
+  protected function syncOnce_removeInternalPatches(stdClass &$composerJson) {
+    if (!InstalledVersions::satisfies(new VersionParser, 'webtourismus/drupal-metapackage', '<=1.0.1')) {
+      return;
+    }
+    if (property_exists($composerJson->extras, 'patches')) {
+      unset($composerJson->extras->patches);
+    }
+  }
 }
+
