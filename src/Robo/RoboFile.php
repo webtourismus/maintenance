@@ -293,8 +293,8 @@ class RoboFile extends \Robo\Tasks
       ->appendUnlessMatches('/^PROD_SSH_USER=.*$/m', "PROD_SSH_USER=\"{$sshUser}\"\n")
       ->regexReplace('/^PROD_DOMAIN=.*$/m', "PROD_DOMAIN=\"{$domain}\"")
       ->appendUnlessMatches('/^PROD_DOMAIN=.*$/m', "PROD_DOMAIN=\"{$domain}\"\n")
-      ->regexReplace('/^PROD_URI=.*$/m', "PROD_URI=\"https://\${PROD_DOMAIN}\"")
-      ->appendUnlessMatches('/^PROD_URI=.*$/m', "PROD_URI=https://\$\"{PROD_DOMAIN}\"\n")
+      ->regexReplace('/^PROD_URI=.*$/m', "PROD_URI=\"https://{$domain}\"")
+      ->appendUnlessMatches('/^PROD_URI=.*$/m', "PROD_URI=https://{$domain}\"\n")
       ->run();
     $this->_exec('cp .env.example .env.prod');
     $dbName = $io->ask('Enter database name on prod', "{$sshUser}_db1");
@@ -307,6 +307,7 @@ class RoboFile extends \Robo\Tasks
       ->regexReplace('/^PROD_SSH_HOST=.*$/m', "PROD_SSH_HOST=\"{$sshHost}\"")
       ->regexReplace('/^PROD_SSH_USER=.*$/m', "PROD_SSH_USER=\"{$sshUser}\"")
       ->regexReplace('/^PROD_DOMAIN=.*$/m', "PROD_DOMAIN=\"{$domain}\"")
+      ->regexReplace('/^PROD_URI=.*$/m', "PROD_URI=\"https://{$domain}\"")
       ->regexReplace('/^DB_NAME=.*$/m', "DB_NAME=\"{$dbName}\"")
       ->regexReplace('/^DB_USER=.*$/m', "DB_USER=\"{$dbUser}\"")
       ->regexReplace('/^DB_PASS=.*$/m', "DB_PASS=\"{$dbPass}\"")
@@ -323,7 +324,7 @@ class RoboFile extends \Robo\Tasks
     $this->push($io, $message);
     $this->_exec('./vendor/bin/drush @prod site:ssh "rm index.html || true"');
     $this->_exec('./vendor/bin/drush @prod site:ssh "ssh-keyscan bitbucket.org >> ~/.ssh/known_hosts"');
-    $this->_exec('./vendor/bin/drush @prod site:ssh "echo -e \"export PATH=\\\$PATH:./vendor/bin\n\" >> ~/.bashrc"');
+    $this->_exec('./vendor/bin/drush @prod site:ssh "echo -e \"export PATH=\$PATH:./vendor/bin\n\" >> ~/.bashrc"');
     $this->_exec('./vendor/bin/drush @prod site:ssh "git clone git@bitbucket.org:webtourismus/' . $_ENV['PROJECT_NAME'] .'.git ."');
     $this->_exec('./vendor/bin/drush @prod site:ssh "./composer.phar install --no-dev --prefer-dist"');
     $this->_exec('./vendor/bin/drush core:rsync ./ @prod:. --exclude-paths=.git:.vscode:.idea:vendor:web/core:web/modules/contrib:web/themes/contrib:web/libraries');
