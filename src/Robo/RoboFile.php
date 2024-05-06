@@ -402,7 +402,7 @@ class RoboFile extends \Robo\Tasks
     $jsonIndentedBy2 = preg_replace('/^(  +?)\\1(?=[^ ])/m', '$1', $jsonIndentedBy4);
     file_put_contents('./composer.json', $jsonIndentedBy2);
 
-    $this->_exec("./composer.phar update --root-reqs -W --no-dev --prefer-dist -o");
+    $this->_exec("./composer.phar update --root-reqs --no-audit -W --no-dev --prefer-dist -o");
   }
 
   protected function ___EXAMPLE___syncOnce_removeObsoltePatch(stdClass $composerJson) {
