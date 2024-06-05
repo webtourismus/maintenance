@@ -6,6 +6,7 @@ use Robo\Symfony\ConsoleIO;
 use Robo\Exception\AbortTasksException;
 use Composer\InstalledVersions;
 use Composer\Semver\VersionParser;
+use Composer\Semver\Comparator;
 
 class RoboFile extends \Robo\Tasks
 {
@@ -183,7 +184,7 @@ class RoboFile extends \Robo\Tasks
     $this->_exec("git remote add origin git@bitbucket.org:webtourismus/{$projectName}.git");
     $this->_exec("./vendor/bin/drush config:export -y");
     $this->_exec("git add -A");
-    $this->_exec("git commit -m=\"Initial commit\"");
+    $this->_exec("git commit -m \"Initial commit\"");
     $this->_exec("git push origin master");
     $io->say("Initial commit to Bitbucket done.");
   }
@@ -210,7 +211,7 @@ class RoboFile extends \Robo\Tasks
     $this->_exec("./vendor/bin/drush config:export -y");
     $this->_exec("./vendor/bin/drush backend:css");
     $this->_exec("git add -A");
-    $this->_exec("git diff-index --quiet HEAD || git commit -m=\"{$message}\"");
+    $this->_exec("git diff-index --quiet HEAD || git commit -m \"{$message}\"");
     $this->_exec("git push origin master");
     $io->say("Pushed to origin repository.");
   }
@@ -359,6 +360,7 @@ class RoboFile extends \Robo\Tasks
     $this->ensureDevDir();
     $this->stopOnFail(TRUE);
 
+    $metaPackage = json_decode(file_get_contents('../_dev/drupal-metapackage/composer.json'));
     $starterkit = json_decode(file_get_contents('../_dev/drupal-starterkit/composer.json'));
     $project = json_decode(file_get_contents('./composer.json'));
 
@@ -372,31 +374,25 @@ class RoboFile extends \Robo\Tasks
       $project->require->{$key} = $item;
     }
 
-    /**
-     * sync mandatory patches
-     * @todo: find out how to remove obsolete default patches, while still keeping project-only-patches.
-     */
-
+    /* sync mandatory patches */
     $this->_exec("cp ~/_dev/drupal-starterkit/private/patches/* ./private/patches/");
     foreach ($starterkit->extra->patches as $key => $item) {
       $project->extra->patches->{$key} = $item;
     }
 
     /**
-     * Onestime sync methods:
-     * - all method names starting with "syncOnce_"
-     * - receive the project's composer.json as plain object, will be written to disk.
-     *
-     * The received object already has the new metapackage version set, but is not yet persisted/installed.
-     * To get currently installed versions, either manually load "composer.json" file from disk
-     * or see https://getcomposer.org/doc/07-runtime.md#knowing-whether-package-x-is-installed-in-version-y
+     * #################################################################################################################
+     * START One-off sync methods
+     * #################################################################################################################
      */
-    $allMethods = get_class_methods($this);
-    $onetimeSyncMethods = array_filter($allMethods, fn($method) => strpos($method, 'syncOnce_') === 0);
-    foreach ($onetimeSyncMethods as $method) {
-      $reflectionMethod = new ReflectionMethod($this::class, $method);
-      $reflectionMethod->invoke($this, $project);
-    }
+
+    $this->oneoff_2024_06_04_removeViewsReferencePatch_3402036($project, $metaPackage);
+
+    /**
+     * #################################################################################################################
+     * END One-off sync methods
+     * #################################################################################################################
+     */
 
     $jsonIndentedBy4 = json_encode($project, JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT);
     $jsonIndentedBy2 = preg_replace('/^(  +?)\\1(?=[^ ])/m', '$1', $jsonIndentedBy4);
@@ -405,13 +401,30 @@ class RoboFile extends \Robo\Tasks
     $this->_exec("./composer.phar update --root-reqs --no-audit -W --no-dev --prefer-dist -o");
   }
 
-  protected function ___EXAMPLE___syncOnce_removeObsoltePatch(stdClass $composerJson) {
-    if (!InstalledVersions::satisfies(new VersionParser, 'webtourismus/drupal-metapackage', '<=1.0.1')) {
-      return;
+  /**
+   * Removes a patch file from the extra section of the composer.json file.
+   */
+  private function removePatch(stdClass $composerJson, string $package, string $patch) {
+    if (property_exists($composerJson?->extra?->patches?->{$package}, $patch)) {
+      unset($composerJson->extra->patches->{$package}->{$patch});
+      if (count(get_object_vars($composerJson->extra->patches->{$package})) == 0) {
+        unset($composerJson->extra->patches->{$package});
+      }
     }
-    if (property_exists($composerJson->extra->patches, '1234 - obsolete patch')) {
-      unset($composerJson->extra->patches->{'1234 - obsolete patch'});
+  }
+
+  /**
+   * This patch is no longer required after drupal/viewsreference:^2.0-beta8
+   **/
+  private function oneoff_2024_06_04_removeViewsReferencePatch_3402036(stdClass $project, stdClass $metaPackage) {
+    // The following line would compare the currently installed version, which might be lower
+    // than the new required (but not yet installed) version:
+    // if (InstalledVersions::satisfies(new VersionParser, 'drupal/viewsreference', '>=2.0-beta8')) {
+
+    // When comparing specific -beta or -rc versions, ensure you are comparing equal version deepness (main.minor.patch)
+    // on both attributes of the comparator!
+    if (Comparator::greaterThanOrEqualTo(trim($metaPackage->require->{'drupal/viewsreference'}, '^~<>='), '2.0-beta8')) {
+      $this->removePatch($project, 'drupal/viewsreference', '3402036 - Config schema for enable_settings incorrect');
     }
   }
 }
-
