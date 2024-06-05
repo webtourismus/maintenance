@@ -405,7 +405,10 @@ class RoboFile extends \Robo\Tasks
    * Removes a patch file from the extra section of the composer.json file.
    */
   private function removePatch(stdClass $composerJson, string $package, string $patch) {
-    if (property_exists($composerJson?->extra?->patches?->{$package}, $patch)) {
+    if (
+      property_exists($composerJson->extra->patches, $package) &&
+      property_exists($composerJson->extra->patches->{$package}, $patch)
+    ) {
       unset($composerJson->extra->patches->{$package}->{$patch});
       if (count(get_object_vars($composerJson->extra->patches->{$package})) == 0) {
         unset($composerJson->extra->patches->{$package});
