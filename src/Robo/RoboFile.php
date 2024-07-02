@@ -295,7 +295,7 @@ class RoboFile extends \Robo\Tasks
       ->regexReplace('/^PROD_DOMAIN=.*$/m', "PROD_DOMAIN=\"{$domain}\"")
       ->appendUnlessMatches('/^PROD_DOMAIN=.*$/m', "PROD_DOMAIN=\"{$domain}\"\n")
       ->regexReplace('/^PROD_URI=.*$/m', "PROD_URI=\"https://{$domain}\"")
-      ->appendUnlessMatches('/^PROD_URI=.*$/m', "PROD_URI=https://{$domain}\"\n")
+      ->appendUnlessMatches('/^PROD_URI=.*$/m', "PROD_URI=\"https://{$domain}\"\n")
       ->run();
     $this->_exec('cp .env.example .env.prod');
     $dbName = $io->ask('Enter database name on prod', "{$sshUser}_db1");
