@@ -153,9 +153,9 @@ class RoboFile extends \Robo\Tasks
     $this->_exec("./vendor/bin/drush twig:debug on");
     $this->_exec('./vendor/bin/drush state:set disable_rendered_output_cache_bins 1 --input-format=integer');
     $this->_exec("./vendor/bin/drush cache:rebuild");
-    if (is_dir('~/factory.dev1.webtourismus.at/web/sites/default/files/amenity')) {
+    if (is_dir('../factory.dev1.webtourismus.at/web/sites/default/files/amenity')) {
       $this->_copyDir(
-        '~/factory.dev1.webtourismus.at/web/sites/default/files/amenity',
+        '../factory.dev1.webtourismus.at/web/sites/default/files/amenity',
         './web/sites/default/files/amenity',
       );
     }
