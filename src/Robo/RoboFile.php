@@ -339,7 +339,7 @@ class RoboFile extends \Robo\Tasks
     $this->_exec('./vendor/bin/drush @prod site:ssh "cp .env.prod .env"');
     $this->_exec('./vendor/bin/drush @prod site:ssh "rm .env.prod"');
     $this->_exec('rm .env.prod');
-    $this->_exec('./vendor/bin/drush sql:sync @self @prod');
+    $this->_exec('./vendor/bin/drush sql:sync @self @prod --uri=https://' . $domain);
     $this->_exec('./vendor/bin/drush @prod cache:rebuild');
     $this->_exec('./vendor/bin/drush @prod state:set twig_debug 0 --input-format=integer');
     $this->_exec('./vendor/bin/drush @prod state:set twig_cache_disable 0 --input-format=integer');
