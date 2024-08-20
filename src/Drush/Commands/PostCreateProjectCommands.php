@@ -548,11 +548,10 @@ final class PostCreateProjectCommands extends DrushCommands {
       $block->save();
 
       /** @var \Drupal\Core\Config\Entity\ConfigEntityInterface $blockConfig */
-      $blockConfig = $this->entityTypeManager->getStorage('block')->load('popup');
-      if ($blockConfig &&
-          $blockConfig->get('theme') == 'frontend' &&
-          $blockConfig->get('region') == 'popup' &&
-          strpos($blockConfig->get('plugin'), 'block_content:' === 0)
+      $blockConfig = $this->entityTypeManager->getStorage('block')->load('popup_frontpage');
+      if ($blockConfig?->get('theme') == 'frontend' &&
+          $blockConfig?->get('region') == 'popup' &&
+          strpos($blockConfig?->get('plugin') ?? '', 'block_content:' === 0)
       ) {
         $existingUuid = str_replace('block_content:', '', $blockConfig->get('plugin'));
         // Newly created block_content entity does not match the existing block config (block layout).

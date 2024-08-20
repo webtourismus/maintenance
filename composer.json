@@ -12,8 +12,8 @@
         "drupal/maintenance": "*"
     },
     "require": {
-        "drupal/core": "^10",
-        "drush/drush": "^12",
+        "drupal/core": "^10.3 || ^11",
+        "drush/drush": "^12 || ^13",
         "webtourismus/ebr": "^1"
     }
 }
