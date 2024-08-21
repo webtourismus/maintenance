@@ -366,11 +366,10 @@ class RoboFile extends \Robo\Tasks
     $this->ensureDevDir();
     $this->stopOnFail(TRUE);
 
-    $metaPackage = json_decode(file_get_contents('../_dev/drupal-metapackage/composer.json'));
     $starterkit = json_decode(file_get_contents('../_dev/drupal-starterkit/composer.json'));
     $project = json_decode(file_get_contents('./composer.json'));
 
-    /* sync repo sources */
+    /* sync mandatory repo sources */
     foreach ($starterkit->repositories as $key => $item) {
       $project->repositories->{$key} = $item;
     }
@@ -382,58 +381,35 @@ class RoboFile extends \Robo\Tasks
 
     /* sync mandatory patches */
     $this->_exec("cp ~/_dev/drupal-starterkit/private/patches/* ./private/patches/");
-    foreach ($starterkit->extra->patches as $key => $item) {
-      $project->extra->patches->{$key} = $item;
+    foreach ($starterkit->extra->patches as $package => $patch) {
+      if (!property_exists($project->extra->patches, $package)) {
+        $project->extra->patches->{$package} = new stdClass();
+      }
+      foreach ($patch as $key => $file) {
+        $project->extra->patches->{$package}->{$key} = $file;
+      }
     }
 
-    /**
-     * #################################################################################################################
-     * START One-off sync methods
-     * #################################################################################################################
-     */
-
-    $this->oneoff_2024_06_04_removeViewsReferencePatch_3402036($project, $metaPackage);
-
-    /**
-     * #################################################################################################################
-     * END One-off sync methods
-     * #################################################################################################################
-     */
+    /* remove deprecated patches */
+    $composerRemove = json_decode(file_get_contents('./private/patches/COMPOSER.REMOVE.json'));
+    foreach ($composerRemove->remove->extra->patches as $package => $patch) {
+      foreach ($patch as $key => $description) {
+        if (
+          property_exists($project->extra->patches, $package) &&
+          property_exists($project->extra->patches->{$package}, $key)
+        ) {
+          unset($project->extra->patches->{$package}->{$key});
+          if (count(get_object_vars($project->extra->patches->{$package})) == 0) {
+            unset($project->extra->patches->{$package});
+          }
+        }
+      }
+    }
 
     $jsonIndentedBy4 = json_encode($project, JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT);
     $jsonIndentedBy2 = preg_replace('/^(  +?)\\1(?=[^ ])/m', '$1', $jsonIndentedBy4);
     file_put_contents('./composer.json', $jsonIndentedBy2);
 
     $this->_exec("./composer.phar update --root-reqs --no-audit -W --no-dev --prefer-dist -o");
-  }
-
-  /**
-   * Removes a patch file from the extra section of the composer.json file.
-   */
-  private function removePatch(stdClass $composerJson, string $package, string $patch) {
-    if (
-      property_exists($composerJson->extra->patches, $package) &&
-      property_exists($composerJson->extra->patches->{$package}, $patch)
-    ) {
-      unset($composerJson->extra->patches->{$package}->{$patch});
-      if (count(get_object_vars($composerJson->extra->patches->{$package})) == 0) {
-        unset($composerJson->extra->patches->{$package});
-      }
-    }
-  }
-
-  /**
-   * This patch is no longer required after drupal/viewsreference:^2.0-beta8
-   **/
-  private function oneoff_2024_06_04_removeViewsReferencePatch_3402036(stdClass $project, stdClass $metaPackage) {
-    // The following line would compare the currently installed version, which might be lower
-    // than the new required (but not yet installed) version:
-    // if (InstalledVersions::satisfies(new VersionParser, 'drupal/viewsreference', '>=2.0-beta8')) {
-
-    // When comparing specific -beta or -rc versions, ensure you are comparing equal version deepness (main.minor.patch)
-    // on both attributes of the comparator!
-    if (Comparator::greaterThanOrEqualTo(trim($metaPackage->require->{'drupal/viewsreference'}, '^~<>='), '2.0-beta8')) {
-      $this->removePatch($project, 'drupal/viewsreference', '3402036 - Config schema for enable_settings incorrect');
-    }
   }
 }
