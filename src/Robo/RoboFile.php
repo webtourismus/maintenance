@@ -254,11 +254,11 @@ class RoboFile extends \Robo\Tasks
     $this->_exec("./vendor/bin/drush state:set system.maintenance_mode 0");
     if ($this->isProdDir()) {
       unset($output);
-      exec('./vendor/bin/drush state:get twig_debug', $output);
+
+      exec('./vendor/bin/drush php:eval "echo (string) \Drupal::keyValue(\'development_settings\')->get(\'twig_debug\');"', $output);
       foreach($output as $line) {
         if ($line == '1') {
-          $this->_exec('./vendor/bin/drush twig:debug off');
-          $this->_exec('./vendor/bin/drush state:set disable_rendered_output_cache_bins 0 --input-format=integer');
+          $this->_exec('./vendor/bin/drush php:eval "\Drupal::keyValue(\'development_settings\')->setMultiple([\'disable_rendered_output_cache_bins\' => FALSE, \'twig_debug\' => FALSE, \'twig_cache_disable\' => FALSE]);"');
           $this->_exec('./vendor/bin/drush cache:rebuild');
           break;
         }
@@ -326,6 +326,11 @@ class RoboFile extends \Robo\Tasks
     if (!$answer) {
       throw new AbortTasksException('Aborted due incorrect settings.');
     }
+
+    //
+    $this->_exec('./vendor/bin/drush cron');
+    $this->_exec('./vendor/bin/drush cache:rebuild');
+
     $date = date('Y-m-d H:i:s');
     $message = "===== GO LIVE on {$date} =====";
     $this->push($io, $message);
@@ -339,11 +344,9 @@ class RoboFile extends \Robo\Tasks
     $this->_exec('./vendor/bin/drush @prod site:ssh "cp .env.prod .env"');
     $this->_exec('./vendor/bin/drush @prod site:ssh "rm .env.prod"');
     $this->_exec('rm .env.prod');
-    $this->_exec('./vendor/bin/drush sql:sync @self @prod --uri=https://' . $domain);
+    $this->_exec('export PROD_URI=https://' . $domain . ' && ./vendor/bin/drush sql:sync @self @prod');
     $this->_exec('./vendor/bin/drush @prod cache:rebuild');
-    $this->_exec('./vendor/bin/drush @prod state:set twig_debug 0 --input-format=integer');
-    $this->_exec('./vendor/bin/drush @prod state:set twig_cache_disable 0 --input-format=integer');
-    $this->_exec('./vendor/bin/drush @prod state:set disable_rendered_output_cache_bins 0 --input-format=integer');
+    $this->_exec('./vendor/bin/drush @prod php:eval "\Drupal::keyValue(\'development_settings\')->setMultiple([\'disable_rendered_output_cache_bins\' => FALSE, \'twig_debug\' => FALSE, \'twig_cache_disable\' => FALSE]);"');
     $this->_exec('./vendor/bin/drush @prod cache:rebuild');
     $io->say('Files and database copied to prod server. To finish go live:');
     $io->listing([
