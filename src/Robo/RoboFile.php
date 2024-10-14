@@ -327,7 +327,7 @@ class RoboFile extends \Robo\Tasks
       throw new AbortTasksException('Aborted due incorrect settings.');
     }
 
-    //
+    // "cron" and "cache:rebuilt" greatly reduce the size of the DB
     $this->_exec('./vendor/bin/drush cron');
     $this->_exec('./vendor/bin/drush cache:rebuild');
 
@@ -344,7 +344,11 @@ class RoboFile extends \Robo\Tasks
     $this->_exec('./vendor/bin/drush @prod site:ssh "cp .env.prod .env"');
     $this->_exec('./vendor/bin/drush @prod site:ssh "rm .env.prod"');
     $this->_exec('rm .env.prod');
-    $this->_exec('export PROD_URI=https://' . $domain . ' && ./vendor/bin/drush sql:sync @self @prod');
+    // The following command needs some manual error prevention:
+    // 1. The ENV variable is set changes the golive function, but the _exec is not yet aware of this change --> export PROD_URI
+    // 2. MariaDB adds an "enable sandbox" command on dump, which might break the import --> delete that line from the dump file
+    //    @see https://github.com/drush-ops/drush/issues/6027
+    $this->_exec('export PROD_URI=https://' . $domain . ' && ./vendor/bin/drush sql:sync @self @prod --extra-dump=" | awk \'NR==1 {if (/enable the sandbox mode/) next} {print}\'"');
     $this->_exec('./vendor/bin/drush @prod cache:rebuild');
     $this->_exec('./vendor/bin/drush @prod php:eval "\Drupal::keyValue(\'development_settings\')->setMultiple([\'disable_rendered_output_cache_bins\' => FALSE, \'twig_debug\' => FALSE, \'twig_cache_disable\' => FALSE]);"');
     $this->_exec('./vendor/bin/drush @prod cache:rebuild');
