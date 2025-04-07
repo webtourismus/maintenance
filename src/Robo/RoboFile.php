@@ -34,12 +34,12 @@ class RoboFile extends \Robo\Tasks
   /**
    * The absolute directory pattern for all projects on the dev environment.
    */
-  public const DEV_ENV_DIR_PATTERN_ABS = '|^/usr/www/users/wtdev\d+/public_html/([a-z0-9\-_]+)/?$|';
+  public const DEV_ENV_DIR_PATTERN_ABS = '|^/usr/www/users/wtdev\d+/([a-z0-9\-_]+)/?$|';
 
   /**
    * The relative/symlinked directory pattern for all projects on the prod environment.
    */
-  public const PROD_ENV_DIR_PATTERN_REL = '|^/user/home/([a-z0-9\-_]+)/public_html/?$|';
+  public const PROD_ENV_DIR_PATTERN_REL = '|^/user/home/([a-z0-9\-_]+)/?$|';
   /**
    * The absolute directory path pattern for all projects on the prod environment.
    */
@@ -53,7 +53,8 @@ class RoboFile extends \Robo\Tasks
    * Returns true if the script is run inside a project root dir on the dev server.
    */
   protected function isDevDir(): bool {
-    if (preg_match(self::DEV_ENV_DIR_PATTERN_REL, dirname(__FILE__)) !== 1 &&
+    if (
+      preg_match(self::DEV_ENV_DIR_PATTERN_REL, dirname(__FILE__)) !== 1 &&
       preg_match(self::DEV_ENV_DIR_PATTERN_ABS, dirname(__FILE__)) !== 1
     ) {
       return FALSE;
@@ -110,13 +111,10 @@ class RoboFile extends \Robo\Tasks
   }
 
   /**
-   * Returns the name of the dev project (without subdomain).
-   *
-   * Running this script inside "~/example.dev1.webtourismus.at/" returns "example"
+   * Returns the project name (must be same as directory name and git repo name).
    */
-  protected function detectDevProjectName() {
-    preg_match(self::DEV_ENV_DIR_PATTERN, dirname(__FILE__), $results);
-    return $results[1];
+  protected function getProjectName() {
+    return basename(dirname(__FILE__));
   }
 
   /**
@@ -124,10 +122,10 @@ class RoboFile extends \Robo\Tasks
    */
   public function kickoffInitDev(ConsoleIO $io) {
     $this->ensureDevDir();
-    $projectName = $this->detectDevProjectName();
+    $projectName = $this->getProjectName();
     $dbPattern = str_replace('-', '_', $projectName);
     $dbPattern = substr($dbPattern, 0, 14);
-    $dbPattern = str_pad($dbPattern, 6, '_', $recommendedDbName);
+    $dbPattern = str_pad($dbPattern, 6, '_', STR_PAD_RIGHT);
     $dbName = $io->ask('Enter database name on dev ', $_ENV['DB_NAME'] ?? $dbPattern);
     $dbUser = $io->ask('Enter database user on dev ', $_ENV['DB_USER'] ?? $dbPattern);
     if (!file_exists('./private/scaffold/default.settings.php.append') || !file_exists('../.env')) {
@@ -143,7 +141,7 @@ class RoboFile extends \Robo\Tasks
     $this->taskWriteToFile('.env')
       ->line("PROJECT_NAME=\"{$projectName}\"")
       ->line("DB_NAME=\"{$dbName}\"")
-      ->line("DB_NAME=\"{$dbUser}\"")
+      ->line("DB_USER=\"{$dbUser}\"")
       ->run();
     $this->_exec("cp ./web/sites/default/default.settings.php ./web/sites/default/settings.php");
     $io->say("Created minimal env and settings file for dev system.");
@@ -154,7 +152,7 @@ class RoboFile extends \Robo\Tasks
    */
   public function kickoffInstallDrupal(ConsoleIO $io) {
     $this->ensureDevDir();
-    $projectName = $this->detectDevProjectName();
+    $projectName = $this->getProjectName();
     if (!file_exists('./.env') || !file_exists('./web/sites/default/settings.php')) {
       throw new AbortTasksException('"settings.php" or ".env" file is missing. Run "robo kickoff:init-dev" first.');
     }
@@ -201,7 +199,7 @@ class RoboFile extends \Robo\Tasks
    */
   public function kickoffInitGit(ConsoleIO $io) {
     $this->ensureDevDir();
-    $projectName = $this->detectDevProjectName();
+    $projectName = $this->getProjectName();
     if (!is_dir('./web/sites/default/files/')) {
       throw new AbortTasksException('Drupal "files" storage directory not found. Run "robo kickoff:install-drupal" first.');
     }
