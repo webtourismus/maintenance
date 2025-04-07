@@ -12,9 +12,29 @@ class RoboFile extends \Robo\Tasks
 {
 
   /**
-   * The directory pattern for all projects on the dev environment.
+   * List of possible hostnames for dev environments.
    */
-  public const DEV_ENV_DIR_PATTERN = '|^/var/www/vhosts/(([a-z0-9\-_]+)\.webtourismus\.at)/(([a-z0-9\-_]+)\.\1)/?$|';
+  public const DEV_HOSTNAMES = [
+    'dedi3828.your-server.de',
+  ];
+
+  /**
+   * List of possible hostnames for prod environments.
+   */
+  public const PROD_HOSTNAMES = [
+    'dedi103.your-server.de',
+    'dedi1661.your-server.de',
+  ];
+
+  /**
+   * The relative/symlinked directory pattern for all projects on the dev environment.
+   */
+  public const DEV_ENV_DIR_PATTERN_REL = '|^/usr/home/wtdev\d+/public_html/([a-z0-9\-_]+)/?$|';
+
+  /**
+   * The absolute directory pattern for all projects on the dev environment.
+   */
+  public const DEV_ENV_DIR_PATTERN_ABS = '|^/usr/www/users/wtdev\d+/public_html/([a-z0-9\-_]+)/?$|';
 
   /**
    * The relative/symlinked directory pattern for all projects on the prod environment.
@@ -33,7 +53,12 @@ class RoboFile extends \Robo\Tasks
    * Returns true if the script is run inside a project root dir on the dev server.
    */
   protected function isDevDir(): bool {
-    if (preg_match(self::DEV_ENV_DIR_PATTERN, dirname(__FILE__)) !== 1) {
+    if (preg_match(self::DEV_ENV_DIR_PATTERN_REL, dirname(__FILE__)) !== 1 &&
+      preg_match(self::DEV_ENV_DIR_PATTERN_ABS, dirname(__FILE__)) !== 1
+    ) {
+      return FALSE;
+    }
+    if (!in_array(gethostname(), self::DEV_HOSTNAMES)) {
       return FALSE;
     }
     return TRUE;
@@ -56,6 +81,9 @@ class RoboFile extends \Robo\Tasks
     if (preg_match(self::PROD_ENV_DIR_PATTERN_REL, dirname(__FILE__)) !== 1 &&
       preg_match(self::PROD_ENV_DIR_PATTERN_ABS, dirname(__FILE__)) !== 1
     ) {
+      return FALSE;
+    }
+    if (!in_array(gethostname(), self::PROD_HOSTNAMES)) {
       return FALSE;
     }
     return TRUE;
@@ -88,17 +116,7 @@ class RoboFile extends \Robo\Tasks
    */
   protected function detectDevProjectName() {
     preg_match(self::DEV_ENV_DIR_PATTERN, dirname(__FILE__), $results);
-    return $results[4];
-  }
-
-  /**
-   * Returns the name of the dev project (without subdomain).
-   *
-   * Running this script inside "~/example.dev1.webtourismus.at/" returns "dev1"
-   */
-  protected function detectDevFamilyName() {
-    preg_match(self::DEV_ENV_DIR_PATTERN, dirname(__FILE__), $results);
-    return $results[2];
+    return $results[1];
   }
 
   /**
@@ -106,8 +124,12 @@ class RoboFile extends \Robo\Tasks
    */
   public function kickoffInitDev(ConsoleIO $io) {
     $this->ensureDevDir();
-    $familyName = $this->detectDevFamilyName();
     $projectName = $this->detectDevProjectName();
+    $dbPattern = str_replace('-', '_', $projectName);
+    $dbPattern = substr($dbPattern, 0, 14);
+    $dbPattern = str_pad($dbPattern, 6, '_', $recommendedDbName);
+    $dbName = $io->ask('Enter database name on dev ', $_ENV['DB_NAME'] ?? $dbPattern);
+    $dbUser = $io->ask('Enter database user on dev ', $_ENV['DB_USER'] ?? $dbPattern);
     if (!file_exists('./private/scaffold/default.settings.php.append') || !file_exists('../.env')) {
       throw new AbortTasksException('This script can only be used by webtourismus/drupal-starterkit projects.');
     }
@@ -120,7 +142,8 @@ class RoboFile extends \Robo\Tasks
     $this->stopOnFail(TRUE);
     $this->taskWriteToFile('.env')
       ->line("PROJECT_NAME=\"{$projectName}\"")
-      ->line("DB_NAME=\"{$familyName}_{$projectName}\"")
+      ->line("DB_NAME=\"{$dbName}\"")
+      ->line("DB_NAME=\"{$dbUser}\"")
       ->run();
     $this->_exec("cp ./web/sites/default/default.settings.php ./web/sites/default/settings.php");
     $io->say("Created minimal env and settings file for dev system.");
@@ -131,7 +154,6 @@ class RoboFile extends \Robo\Tasks
    */
   public function kickoffInstallDrupal(ConsoleIO $io) {
     $this->ensureDevDir();
-    $familyName = $this->detectDevFamilyName();
     $projectName = $this->detectDevProjectName();
     if (!file_exists('./.env') || !file_exists('./web/sites/default/settings.php')) {
       throw new AbortTasksException('"settings.php" or ".env" file is missing. Run "robo kickoff:init-dev" first.');
@@ -145,13 +167,11 @@ class RoboFile extends \Robo\Tasks
     $this->_exec("./vendor/bin/drush site:install --existing-config --site-name=\"{$projectName}\" --account-name=entwicklung --account-mail=entwicklung@webtourismus.at --no-interaction");
     $this->_exec("chmod -R u+w ./web/sites/default");
     // remove hardcoded $database settings created by drush site:install again
-    $dbName = "{$familyName}_{$projectName}";
     $this->taskReplaceInFile('./web/sites/default/settings.php')
-      ->regex('/\$databases\[\'default\'\]\[\'default\'\]\s*=\s*array\s*\(\s*\'database\'\s*=>\s*\'' . $dbName . '\'.+\,\s*\);/s')
+      ->regex('/\$databases\[\'default\'\]\[\'default\'\]\s*=\s*array\s*\(\s*\'database\'\s*=>\s*\'[^\']+\'.+\,\s*\);/s')
       ->to('')
       ->run();
-    $this->_exec("./vendor/bin/drush twig:debug on");
-    $this->_exec('./vendor/bin/drush state:set disable_rendered_output_cache_bins 1 --input-format=integer');
+    $this->_exec("./vendor/bin/drush php:eval \"\Drupal::keyValue('development_settings')->setMultiple(['disable_rendered_output_cache_bins' => TRUE, 'twig_debug' => TRUE, 'twig_cache_disable' => TRUE]);\"");
     $this->_exec("./vendor/bin/drush cache:rebuild");
     if (is_dir('../factory.dev1.webtourismus.at/web/sites/default/files/amenity')) {
       $this->_copyDir(
@@ -397,9 +417,16 @@ class RoboFile extends \Robo\Tasks
       }
     }
 
-    /* remove deprecated patches */
+    /* remove deprecated repos */
     $composerRemove = json_decode(file_get_contents('./private/patches/COMPOSER.REMOVE.json'));
-    foreach ($composerRemove->remove->extra->patches as $package => $patch) {
+    foreach ($composerRemove?->remove?->repositories as $key => $description) {
+      if (property_exists($project->repositories, $key)) {
+        unset($project->repositories->{$key});
+      }
+    }
+
+    /* remove deprecated patches */
+    foreach ($composerRemove?->remove?->extra?->patches as $package => $patch) {
       foreach ($patch as $key => $description) {
         if (
           property_exists($project->extra->patches, $package) &&
