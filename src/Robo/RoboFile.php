@@ -220,7 +220,7 @@ class RoboFile extends \Robo\Tasks
     $this->ensureProjectDir();
     exec("git fetch && git status", $output);
     foreach($output as $line) {
-      if (str_contains($line, ' behind ') || str_contains($line, ' behind ')) {
+      if (str_contains($line, ' behind ') || str_contains($line, ' hinter ')) {
         throw new AbortTasksException('Environment is behind origin repository.');
       }
     }
@@ -266,6 +266,7 @@ class RoboFile extends \Robo\Tasks
     $this->_exec("git pull origin master");
     $this->_exec("git clean -fd config/sync");
     $optimizeAutoloader = "";
+    // always use the project's own local composer to prevent version incompatibilities
     $this->_exec("./composer.phar install --no-dev --prefer-dist -o");
     $this->_exec("./vendor/bin/drush deploy");
     $this->_exec("./vendor/bin/drush backend:css");
@@ -354,19 +355,22 @@ class RoboFile extends \Robo\Tasks
     $this->push($io, $message);
     $this->_exec('./vendor/bin/drush @prod site:ssh "rm index.html || true"');
     $this->_exec('./vendor/bin/drush @prod site:ssh "ssh-keyscan bitbucket.org >> ~/.ssh/known_hosts"');
-    $this->_exec('./vendor/bin/drush @prod site:ssh "echo -e \"export PATH=\$PATH:./vendor/bin\n\" >> ~/.bashrc"');
+    $this->_exec('./vendor/bin/drush @prod site:ssh "grep -q ":./vendor/bin" ~/.bashrc || echo -e \"\nexport PATH=\$PATH:./vendor/bin\n\" >> ~/.bashrc"');
     $this->_exec('./vendor/bin/drush @prod site:ssh "git clone git@bitbucket.org:webtourismus/' . $_ENV['PROJECT_NAME'] .'.git ."');
+    // always use the project's own local composer to prevent version incompatibilities
     $this->_exec('./vendor/bin/drush @prod site:ssh "./composer.phar install --no-dev --prefer-dist"');
     $this->_exec('./vendor/bin/drush core:rsync ./ @prod:. --exclude-paths=.git:.vscode:.idea:vendor:web/core:web/modules/contrib:web/themes/contrib:web/libraries');
     $this->_exec('./vendor/bin/drush @prod site:ssh "chmod o+rx ."');
     $this->_exec('./vendor/bin/drush @prod site:ssh "cp .env.prod .env"');
     $this->_exec('./vendor/bin/drush @prod site:ssh "rm .env.prod"');
     $this->_exec('rm .env.prod');
-    // The following command needs some manual error prevention:
-    // 1. The ENV variable is set changes the golive function, but the _exec is not yet aware of this change --> export PROD_URI
-    // 2. MariaDB adds an "enable sandbox" command on dump, which might break the import --> delete that line from the dump file
-    //    @see https://github.com/drush-ops/drush/issues/6027
-    $this->_exec('export PROD_URI=https://' . $domain . ' && ./vendor/bin/drush sql:sync @self @prod --extra-dump=" | awk \'NR==1 {if (/enable the sandbox mode/) next} {print}\'"');
+    // The ".env" file got changed during this golive function, but those changes are not yet propagated to the local env -->
+    // manually refresh the PROD_URI because the subsequent "drush @prod ..." commands need it
+    $_ENV['PROD_URI'] = 'https://' . $domain;
+    putenv("PROD_URI=https://{$domain}");
+    // MariaDB adds an "enable sandbox" command on dump, which might break the import --> delete that line from the dump file
+    // @see https://github.com/drush-ops/drush/issues/6027
+    $this->_exec('./vendor/bin/drush sql:sync @self @prod --extra-dump=" | awk \'NR==1 {if (/enable the sandbox mode/) next} {print}\'"');
     $this->_exec('./vendor/bin/drush @prod cache:rebuild');
     $this->_exec('./vendor/bin/drush @prod php:eval "\Drupal::keyValue(\'development_settings\')->setMultiple([\'disable_rendered_output_cache_bins\' => FALSE, \'twig_debug\' => FALSE, \'twig_cache_disable\' => FALSE]);"');
     $this->_exec('./vendor/bin/drush @prod cache:rebuild');
@@ -442,6 +446,7 @@ class RoboFile extends \Robo\Tasks
     $jsonIndentedBy2 = preg_replace('/^(  +?)\\1(?=[^ ])/m', '$1', $jsonIndentedBy4);
     file_put_contents('./composer.json', $jsonIndentedBy2);
 
+    // always use the project's own local composer to prevent version incompatibilities
     $this->_exec("./composer.phar update --root-reqs --no-audit -W --no-dev --prefer-dist -o");
   }
 }
