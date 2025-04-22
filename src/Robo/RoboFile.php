@@ -405,7 +405,7 @@ class RoboFile extends \Robo\Tasks
     }
 
     /* sync mandatory patches */
-    $this->_exec("cp ~/_dev/drupal-starterkit/private/patches/* ./private/patches/");
+    $this->_exec("cp ../_dev/drupal-starterkit/private/patches/* ./private/patches/");
     foreach ($starterkit->extra->patches as $package => $patch) {
       if (!property_exists($project->extra->patches, $package)) {
         $project->extra->patches->{$package} = new stdClass();
