@@ -195,7 +195,7 @@ class RoboFile extends \Robo\Tasks
   }
 
   /**
-   * Initializes and connects a local Drupal installtion with a Bitbucket repo
+   * Initializes and connects a local Drupal installtion with a Github repo
    */
   public function kickoffInitGit(ConsoleIO $io) {
     $this->ensureDevDir();
@@ -205,12 +205,14 @@ class RoboFile extends \Robo\Tasks
     }
     $this->stopOnFail(TRUE);
     $this->_exec("git init");
-    $this->_exec("git remote add origin git@bitbucket.org:webtourismus/{$projectName}.git");
+    $this->_exec("gh repo create {$projectName} --private");
+    $this->_exec("git remote add origin git@github.com:webtourismus/{$projectName}.git");
     $this->_exec("./vendor/bin/drush config:export -y");
     $this->_exec("git add -A");
     $this->_exec("git commit -m \"Initial commit\"");
     $this->_exec("git push origin master");
-    $io->say("Initial commit to Bitbucket done.");
+    $this->_exec("git branch --set-upstream-to=origin/master");
+    $io->say("Initial commit to Github done.");
   }
 
   /**
@@ -302,7 +304,9 @@ class RoboFile extends \Robo\Tasks
     $io->say('Before starting the launch process, make sure that:');
     $io->listing([
       'Public SSH key of dev server is already provided on the prod server.',
-      'Public SSH key of prod server is already provided on Bitbucket.',
+      'If old Drupal project exists: unset old Drush prod SSH credentials in dev project dir',
+      'If old Drupal project exists: remove deploy key from old Github repo',
+      'Deploy key of prod server is already added to Github repo',
       'PHP is configured on prod server (remote URLs, memory limit, upload size, max_input_vars, ImageMagick)',
       'Backup of old site (files + database) is saved in prod user\'s home directory.',
     ]);
@@ -354,9 +358,10 @@ class RoboFile extends \Robo\Tasks
     $message = "===== GO LIVE on {$date} =====";
     $this->push($io, $message);
     $this->_exec('./vendor/bin/drush @prod site:ssh "rm index.html || true"');
-    $this->_exec('./vendor/bin/drush @prod site:ssh "ssh-keyscan bitbucket.org >> ~/.ssh/known_hosts"');
+    $this->_exec('./vendor/bin/drush @prod site:ssh "ssh-keyscan github.com >> ~/.ssh/known_hosts"');
     $this->_exec('./vendor/bin/drush @prod site:ssh "grep -q ":./vendor/bin" ~/.bashrc || echo -e \"\nexport PATH=\$PATH:./vendor/bin\n\" >> ~/.bashrc"');
-    $this->_exec('./vendor/bin/drush @prod site:ssh "git clone git@bitbucket.org:webtourismus/' . $_ENV['PROJECT_NAME'] .'.git ."');
+    $this->_exec('./vendor/bin/drush @prod site:ssh "git clone git@github.com:webtourismus/' . $_ENV['PROJECT_NAME'] .'.git ."');
+    $this->_exec('./vendor/bin/drush @prod site:ssh "git branch --set-upstream-to=origin/master"');
     // always use the project's own local composer to prevent version incompatibilities
     $this->_exec('./vendor/bin/drush @prod site:ssh "./composer.phar install --no-dev --prefer-dist"');
     $this->_exec('./vendor/bin/drush core:rsync ./ @prod:. --exclude-paths=.git:.vscode:.idea:vendor:web/core:web/modules/contrib:web/themes/contrib:web/libraries');
