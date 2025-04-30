@@ -118,6 +118,17 @@ class RoboFile extends \Robo\Tasks
   }
 
   /**
+   * Returns true if the current project has a prod environment configuration.
+   */
+  protected function hasProdEnv() {
+    $envFile = file_get_contents('.env');
+    if (str_contains($envFile, 'PROD_SSH_HOST') && str_contains($envFile, 'PROD_SSH_USER')) {
+      return TRUE;
+    }
+    return FALSE;
+  }
+
+  /**
    * Creates files required for an automated Drupal installation process
    */
   public function kickoffInitDev(ConsoleIO $io) {
@@ -190,7 +201,7 @@ class RoboFile extends \Robo\Tasks
       'Start with designing the custom frontend theme.',
       'Use "robo push" & "robo pull" often!',
       'Use "drush css" update frontend styles in the admin theme (like headers or buttons in CKeditor).',
-      'Use "robo sync" to keep the project\'s composer.json in sync with updates in the starterkit (like patches).',
+      'Use "robo update" to keep the project\'s composer.json in sync with updates in the starterkit (like patches).',
     ]);
   }
 
@@ -362,7 +373,6 @@ class RoboFile extends \Robo\Tasks
     $this->_exec('./vendor/bin/drush @prod site:ssh "grep -q ":./vendor/bin" ~/.bashrc || echo -e \"\nexport PATH=\$PATH:./vendor/bin\n\" >> ~/.bashrc"');
     $this->_exec('./vendor/bin/drush @prod site:ssh "git clone git@github.com:webtourismus/' . $_ENV['PROJECT_NAME'] .'.git ."');
     $this->_exec('./vendor/bin/drush @prod site:ssh "git branch --set-upstream-to=origin/master"');
-    // always use the project's own local composer to prevent version incompatibilities
     $this->_exec('./vendor/bin/drush @prod site:ssh "./composer.phar install --no-dev --prefer-dist"');
     $this->_exec('./vendor/bin/drush core:rsync ./ @prod:. --exclude-paths=.git:.vscode:.idea:vendor:web/core:web/modules/contrib:web/themes/contrib:web/libraries');
     $this->_exec('./vendor/bin/drush @prod site:ssh "chmod o+rx ."');
@@ -394,11 +404,29 @@ class RoboFile extends \Robo\Tasks
   }
 
   /**
-   * Re-syncs the root project's composer.json with the starterkit.
+   * Re-syncs the project's "composer.json" with the starterkit and updates all packages
    */
-  public function sync(ConsoleIO $io) {
+  public function update(ConsoleIO $io) {
     $this->ensureDevDir();
     $this->stopOnFail(TRUE);
+
+    if (
+      hash_file('xxh3', '../factory/web/modules/contrib/maintenance/src/Robo/RoboFile.php') !=
+      hash_file('xxh3', './RoboFile.php')
+    ) {
+      $io->say('RoboFile in current project differs from factory project, temporarily copying new version...');
+      // The RoboFile can't "composer update webtourismus/maintenace" itself while it is running.
+      $this->_exec('cp ../factory/web/modules/contrib/maintenance/src/Robo/RoboFile.php ./');
+      throw new AbortTasksException('Sync failed due outdated RoboFile. RoboFile is now updated. Re-run "robo sync" now.');
+    }
+
+    if ($this->hasProdEnv()) {
+      $doBackSync = $io->ask('Prod environment detected. Do you want do push & pull from prod first? (y/n)', 'y');
+      if (strtolower($doBackSync) == 'y') {
+        $this->_exec('./vendor/bin/drush @prod site:ssh ./vendor/bin/robo push');
+        $this->_exec('./vendor/bin/robo pull');
+      }
+    }
 
     $starterkit = json_decode(file_get_contents('../_dev/drupal-starterkit/composer.json'));
     $project = json_decode(file_get_contents('./composer.json'));
@@ -423,6 +451,9 @@ class RoboFile extends \Robo\Tasks
         $project->extra->patches->{$package}->{$key} = $file;
       }
     }
+
+    /* sync scaffold files */
+    $this->_exec("cp ../_dev/drupal-starterkit/private/scaffold/* ./private/scaffold/");
 
     /* remove deprecated repos */
     $composerRemove = json_decode(file_get_contents('./private/patches/COMPOSER.REMOVE.json'));
@@ -452,6 +483,16 @@ class RoboFile extends \Robo\Tasks
     file_put_contents('./composer.json', $jsonIndentedBy2);
 
     // always use the project's own local composer to prevent version incompatibilities
-    $this->_exec("./composer.phar update --root-reqs --no-audit -W --no-dev --prefer-dist -o");
+    $this->_exec("./composer.phar update --lock --no-audit -W --no-dev --prefer-dist -o");
+    $this->_exec("./vendor/bin/drush updatedb");
+    $this->_exec("./vendor/bin/drush cache:rebuild");
+    $this->_exec('./vendor/bin/robo push "Re-sync with webtourimus/drupal-starterkit and update packages"');
+
+    if ($this->hasProdEnv()) {
+      $doForwardSync = $io->ask('Do you want do pull the updates into the prod environment? (y/n)', 'y');
+      if (strtolower($doForwardSync) == 'y') {
+        $this->_exec('./vendor/bin/drush @prod site:ssh ./vendor/bin/robo pull');
+      }
+    }
   }
 }
