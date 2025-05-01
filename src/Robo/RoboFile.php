@@ -490,8 +490,10 @@ class RoboFile extends \Robo\Tasks
     $jsonIndentedBy2 = preg_replace('/^(  +?)\\1(?=[^ ])/m', '$1', $jsonIndentedBy4);
     file_put_contents('./composer.json', $jsonIndentedBy2);
 
+    // force installing the new versions from the json file
+    $this->_exec("rm ./composer.lock");
     // always use the project's own local composer to prevent version incompatibilities
-    $this->_exec("./composer.phar update --lock --no-audit -W --no-dev --prefer-dist -o");
+    $this->_exec("./composer.phar install --no-dev --prefer-dist -o");
     $this->_exec("./vendor/bin/drush updatedb");
     $this->_exec("./vendor/bin/drush cache:rebuild");
     $this->_exec('./vendor/bin/robo push "Re-sync with webtourimus/drupal-starterkit and update packages"');
