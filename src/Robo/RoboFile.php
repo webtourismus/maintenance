@@ -215,8 +215,8 @@ class RoboFile extends \Robo\Tasks
       throw new AbortTasksException('Drupal "files" storage directory not found. Run "robo kickoff:install-drupal" first.');
     }
     $this->stopOnFail(TRUE);
-    $this->_exec("git init");
-    $this->_exec("gh repo create {$projectName} --private");
+    $this->_exec("git init -b master");
+    $this->_exec("gh repo create webtourismus/{$projectName} --private");
     $this->_exec("git remote add origin git@github.com:webtourismus/{$projectName}.git");
     $this->_exec("./vendor/bin/drush config:export -y");
     $this->_exec("git add -A");
