@@ -436,7 +436,7 @@ class RoboFile extends \Robo\Tasks
       $project->repositories->{$key} = $item;
     }
 
-    /* sync mandatory dependencies */
+    /* sync mandatory packages */
     foreach ($starterkit->require as $key => $item) {
       $project->require->{$key} = $item;
     }
@@ -455,11 +455,19 @@ class RoboFile extends \Robo\Tasks
     /* sync scaffold files */
     $this->_exec("cp ../_dev/drupal-starterkit/private/scaffold/* ./private/scaffold/");
 
-    /* remove deprecated repos */
     $composerRemove = json_decode(file_get_contents('./private/patches/COMPOSER.REMOVE.json'));
-    foreach ($composerRemove?->remove?->repositories as $key => $description) {
-      if (property_exists($project->repositories, $key)) {
-        unset($project->repositories->{$key});
+
+    /* remove deprecated repos */
+    foreach ($composerRemove?->remove?->repositories as $repo) {
+      if (property_exists($project->repositories, $repo)) {
+        unset($project->repositories->{$repo});
+      }
+    }
+
+    /* remove deprecated packages */
+    foreach ($composerRemove?->remove?->require as $package) {
+      if (property_exists($project->require, $package)) {
+        unset($project->require->{$package});
       }
     }
 
