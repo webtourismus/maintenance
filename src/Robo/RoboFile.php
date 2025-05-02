@@ -196,13 +196,6 @@ class RoboFile extends \Robo\Tasks
     $this->_exec("./vendor/bin/drush locale:import de modules/custom/backend/translations/backend.de.po");
     // create TailwindCSS classes used by Twig layouts and backend modules for Gin theme
     $this->_exec("./vendor/bin/drush css");
-    $io->say("Site {$projectName} was created. Have fun with your project. Some hints:");
-    $io->listing([
-      'Start with designing the custom frontend theme.',
-      'Use "robo push" & "robo pull" often!',
-      'Use "drush css" update frontend styles in the admin theme (like headers or buttons in CKeditor).',
-      'Use "robo update" to keep the project\'s composer.json in sync with updates in the starterkit (like patches).',
-    ]);
   }
 
   /**
@@ -224,6 +217,13 @@ class RoboFile extends \Robo\Tasks
     $this->_exec("git push origin master");
     $this->_exec("git branch --set-upstream-to=origin/master");
     $io->say("Initial commit to Github done.");
+    $io->say("Site {$projectName} was created. Have fun with your project. Some hints:");
+    $io->listing([
+      'Start with designing the custom frontend theme.',
+      'Use "robo push" & "robo pull" often!',
+      'Use "drush css" update frontend styles in the admin theme (like headers or buttons in CKeditor).',
+      'Use "robo update" to keep the project\'s composer.json in sync with updates in the starterkit (like patches).',
+    ]);
   }
 
   /**
