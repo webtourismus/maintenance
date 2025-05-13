@@ -182,9 +182,9 @@ class RoboFile extends \Robo\Tasks
       ->run();
     $this->_exec("./vendor/bin/drush php:eval \"\Drupal::keyValue('development_settings')->setMultiple(['disable_rendered_output_cache_bins' => TRUE, 'twig_debug' => TRUE, 'twig_cache_disable' => TRUE]);\"");
     $this->_exec("./vendor/bin/drush cache:rebuild");
-    if (is_dir('../factory.dev1.webtourismus.at/web/sites/default/files/amenity')) {
+    if (is_dir('../factory/web/sites/default/files/amenity')) {
       $this->_copyDir(
-        '../factory.dev1.webtourismus.at/web/sites/default/files/amenity',
+        '../factory/web/sites/default/files/amenity',
         './web/sites/default/files/amenity',
       );
     }
