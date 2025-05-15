@@ -2,4 +2,4 @@ name: 'Webtourismus Project Maintenance'
 type: module
 description: 'Provides default content and ongoing maintenance functions for projects based on webtourismus/drupal-starterkit.'
 core_version_requirement: ^10.3 || ^11
-version: 1.3.4
+version: 1.3.6
