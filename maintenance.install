@@ -1,0 +1,27 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Fix cardinality_config of the field amenity.
+ */
+function maintenance_update_10001(): ?string {
+    /**
+     * @var \Drupal\field\Entity\FieldConfig $entity
+     */
+    $entity = \Drupal::entityTypeManager()->getStorage('field_config')->load('node.room.field_amenity');
+
+    // Amenity
+    if (!($entity instanceof \Drupal\field\Entity\FieldConfig)) {
+        return null;
+    }
+
+    $cardinalityConfig = $entity->getThirdPartySetting('field_config_cardinality', 'cardinality_config', '-1');
+
+    if ('-1' !== $cardinalityConfig) {
+        $entity->setThirdPartySetting('field_config_cardinality', 'cardinality_config', '-1');
+        $entity->save();
+    }
+
+    return null;
+}
