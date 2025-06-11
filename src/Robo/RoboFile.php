@@ -340,6 +340,7 @@ class RoboFile extends \Robo\Tasks
     $this->_exec('cp .env.example .env.prod');
     $dbName = $io->ask('Enter database name on prod', "{$sshUser}_db1");
     $dbUser = $io->ask('Enter database user on prod', "{$sshUser}_1");
+    $dbHost = $io->ask('Enter database host on prod', "localhost");
     $dbPass = $io->ask('Enter database password on prod');
     $this->taskWriteToFile('.env.prod')
       ->append(TRUE)
@@ -351,6 +352,7 @@ class RoboFile extends \Robo\Tasks
       ->regexReplace('/^PROD_URI=.*$/m', "PROD_URI=\"https://{$domain}\"")
       ->regexReplace('/^DB_NAME=.*$/m', "DB_NAME=\"{$dbName}\"")
       ->regexReplace('/^DB_USER=.*$/m', "DB_USER=\"{$dbUser}\"")
+      ->regexReplace('/^DB_HOST=.*$/m', "DB_HOST=\"{$dbHost}\"")
       ->regexReplace('/^DB_PASS=.*$/m', "DB_PASS=\"{$dbPass}\"")
       ->run();
     $io->newLine(3);
@@ -383,11 +385,10 @@ class RoboFile extends \Robo\Tasks
     // manually refresh the PROD_URI because the subsequent "drush @prod ..." commands need it
     $_ENV['PROD_URI'] = 'https://' . $domain;
     putenv("PROD_URI=https://{$domain}");
-    // MariaDB adds an "enable sandbox" command on dump, which might break the import --> delete that line from the dump file
-    // @see https://github.com/drush-ops/drush/issues/6027
-    $this->_exec('./vendor/bin/drush sql:sync @self @prod --extra-dump=" | awk \'NR==1 {if (/enable the sandbox mode/) next} {print}\'"');
+    $this->_exec('./vendor/bin/drush sql:sync @self @prod');
     $this->_exec('./vendor/bin/drush @prod cache:rebuild');
-    $this->_exec('./vendor/bin/drush @prod php:eval "\Drupal::keyValue(\'development_settings\')->setMultiple([\'disable_rendered_output_cache_bins\' => FALSE, \'twig_debug\' => FALSE, \'twig_cache_disable\' => FALSE]);"');
+    // Fixed escapes with " instead of ' for this command.
+    $this->_exec("./vendor/bin/drush @prod php:eval \"\Drupal::keyValue('development_settings')->setMultiple(['disable_rendered_output_cache_bins' => FALSE, 'twig_debug' => FALSE, 'twig_cache_disable' => FALSE]);\"");
     $this->_exec('./vendor/bin/drush @prod cache:rebuild');
     $io->say('Files and database copied to prod server. To finish go live:');
     $io->listing([
