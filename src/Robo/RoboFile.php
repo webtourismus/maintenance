@@ -24,6 +24,7 @@ class RoboFile extends \Robo\Tasks
   public const PROD_HOSTNAMES = [
     'dedi103.your-server.de',
     'dedi1661.your-server.de',
+    'www659.your-server.de',
   ];
 
   /**
@@ -321,7 +322,7 @@ class RoboFile extends \Robo\Tasks
       'PHP is configured on prod server (remote URLs, memory limit, upload size, max_input_vars, ImageMagick)',
       'Backup of old site (files + database) is saved in prod user\'s home directory.',
     ]);
-    $sshHost = $io->choice('Select live host', ['dedi103.your-server.de', 'dedi1661.your-server.de'], $_ENV['PROD_SSH_HOST'] ?? NULL);
+    $sshHost = $io->choice('Select live host', self::PROD_HOSTNAMES, $_ENV['PROD_SSH_HOST'] ?? NULL);
     $sshUser = $io->ask('Enter SSH username on prod host', $_ENV['PROD_SSH_USER'] ?? NULL);
     $domain = $io->ask('Enter production domain (usually starting with www.)', $_ENV['PROD_DOMAIN'] ?? NULL);
     $this->taskWriteToFile('.env')
