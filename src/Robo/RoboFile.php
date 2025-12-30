@@ -2,13 +2,14 @@
 
 declare(strict_types=1);
 
+use Robo\Tasks;
 use Robo\Symfony\ConsoleIO;
 use Robo\Exception\AbortTasksException;
 use Composer\InstalledVersions;
 use Composer\Semver\VersionParser;
 use Composer\Semver\Comparator;
 
-class RoboFile extends \Robo\Tasks
+class RoboFile extends Tasks
 {
 
   /**
