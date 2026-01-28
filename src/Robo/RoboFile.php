@@ -355,7 +355,7 @@ class RoboFile extends Tasks
       ->regexReplace('/^DB_NAME=.*$/m', "DB_NAME=\"{$dbName}\"")
       ->regexReplace('/^DB_USER=.*$/m', "DB_USER=\"{$dbUser}\"")
       ->regexReplace('/^DB_HOST=.*$/m', "DB_HOST=\"{$dbHost}\"")
-      ->regexReplace('/^DB_PASS=.*$/m', "DB_PASS=\"{$dbPass}\"")
+      ->regexReplace('/^DB_PASS_NEW=.*$/m', "DB_PASS_NEW=\"{$dbPass}\"")
       ->run();
     $io->newLine(3);
     $io->say('Please verify .env settings for prod');
