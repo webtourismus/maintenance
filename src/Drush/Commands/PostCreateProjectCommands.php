@@ -392,7 +392,7 @@ final class PostCreateProjectCommands extends DrushCommands {
       );
     }
 
-    // Imprint page (used by cookies module)
+    // Imprint page.
     if (is_null($this->ebr->getEntity('node', 'imprint'))) {
       $node = Node::create([
         'title' => 'Impressum',
@@ -410,8 +410,6 @@ final class PostCreateProjectCommands extends DrushCommands {
       ]);
       $nodeAlias->save();
       $this->keyValue->get('pathauto_state.node')->set($node->id(), PathautoState::SKIP);
-      $config = $this->configFactory->getEditable('cookies.texts');
-      $config->set('imprintUri', "/node/{$node->id()}")->save();
       $menuLinkStorage = $this->entityTypeManager->getStorage('menu_link_content');
       $menuLinkStorage->create([
         'title' => 'Impressum',
@@ -423,7 +421,7 @@ final class PostCreateProjectCommands extends DrushCommands {
       ])->save();
     }
 
-    // Privacy page (used by cookies module)
+    // Privacy page
     if (is_null($this->ebr->getEntity('node', 'privacy'))) {
       $node = Node::create([
         'title' => 'Datenschutz',
@@ -442,8 +440,6 @@ final class PostCreateProjectCommands extends DrushCommands {
       ]);
       $nodeAlias->save();
       $this->keyValue->get('pathauto_state.node')->set($node->id(), PathautoState::SKIP);
-      $config = $this->configFactory->getEditable('cookies.texts');
-      $config->set('privacyUri', "/node/{$node->id()}")->save();
       $menuLinkStorage = $this->entityTypeManager->getStorage('menu_link_content');
       $menuLinkStorage->create([
         'title' => 'Datenschutz',
@@ -455,21 +451,33 @@ final class PostCreateProjectCommands extends DrushCommands {
       ])->save();
     }
 
-    // cookies JS ui
-    $menuLinkStorage = $this->entityTypeManager->getStorage('menu_link_content');
-    $cookiesMenuLink = $menuLinkStorage->loadByProperties([
-      'title' => 'Cookies',
-      'menu_name' => 'legal',
-    ]);
-    if (empty($cookiesMenuLink)) {
-      $config = $this->configFactory->getEditable('cookies.config');
+    // Accessibility page
+    if (is_null($this->ebr->getEntity('node', 'accessibility'))) {
+      $node = Node::create([
+        'title' => 'Barrierefreiheit',
+        'type' => 'page',
+        'langcode' => 'de',
+        'uid' => 1,
+        EntityBusinessrules::FIELD_INTERNAL_ID => 'accessibility',
+        EntityBusinessrules::FIELD_INTERAL_NOTES => '@todo: Befüllen.',
+        'field_seo' => '{"robots":"noindex, nofollow, noarchive, nosnippet, noimageindex"}',
+      ]);
+      $node->save();
+      $nodeAlias = PathAlias::create([
+        'path' => "/node/{$node->id()}",
+        'alias' => '/barrierefreiheit',
+        'langcode' => 'de',
+      ]);
+      $nodeAlias->save();
+      $this->keyValue->get('pathauto_state.node')->set($node->id(), PathautoState::SKIP);
+      $menuLinkStorage = $this->entityTypeManager->getStorage('menu_link_content');
       $menuLinkStorage->create([
-        'title' => 'Cookies',
-        'link' => ['uri' => "internal:#{$config->get('open_settings_hash')}"],
+        'title' => 'Barrierefreiheit',
+        'link' => ['uri' => "entity:{$node->getEntityTypeId()}/{$node->id()}"],
         'menu_name' => 'legal',
         'langcode' => 'de',
         'expanded' => FALSE,
-        'weight' => 2,
+        'weight' => 1,
       ])->save();
     }
 
@@ -535,7 +543,7 @@ final class PostCreateProjectCommands extends DrushCommands {
     if (is_null($this->ebr->getEntity('block_content', 'popup_frontpage'))) {
       $block = BlockContent::create([
         'info' => 'Startseite Popup',
-        'type' => 'text',
+        'type' => 'text_with_image',
         'langcode' => 'de',
         'reuseable' => 1,
         'status' => 1,
