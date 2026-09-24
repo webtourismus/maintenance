@@ -160,7 +160,7 @@ final class PostCreateProjectCommands extends DrushCommands {
       $nodeAlias->save();
     }
 
-    // Enquiry (en, de) with alias, interal_id
+    // Enquiry (en, de) with alias, internal_id
     if (is_null($this->ebr->getEntity('node', AccommodationBase::ACTION_ENQUIRY))) {
       $node = Node::create([
         'title' => 'Anfrage',
