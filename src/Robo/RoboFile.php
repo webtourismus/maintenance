@@ -120,6 +120,70 @@ class RoboFile extends Tasks
   }
 
   /**
+   * Replaces outdated code in the project's settings.php.
+   *
+   * The settings.php is created once from the starterkit's scaffold and is not
+   * updated by composer, so changes of default.settings.php.append which must
+   * reach existing projects are migrated here. Only matches the exact old
+   * code, so running it again does nothing.
+   */
+  protected function migrateSettings(ConsoleIO $io): void {
+    $file = './web/sites/default/settings.php';
+    if (!is_file($file)) {
+      return;
+    }
+    $settings = file_get_contents($file);
+    $migrated = preg_replace(
+      [
+        // assert_options() is deprecated since PHP 8.3.
+        '/^assert_options\(ASSERT_ACTIVE, \$_ENV\[\'ENV\'\] === \'dev\'\);$/m',
+        // Default to "dev" in DDEV, to "prod" everywhere else.
+        '/^\$_ENV\[\'ENV\'\] = \$_ENV\[\'ENV\'\] \?\? \'prod\';$/m',
+      ],
+      [
+        "if ((int) ini_get('zend.assertions') !== -1) {\n  ini_set('zend.assertions', \$_ENV['ENV'] === 'dev' ? '1' : '0');\n}",
+        "\$_ENV['ENV'] = \$_ENV['ENV'] ?? (getenv('IS_DDEV_PROJECT') === 'true' ? 'dev' : 'prod');",
+      ],
+      $settings,
+    );
+    if ($migrated === NULL || $migrated === $settings) {
+      return;
+    }
+    // Drupal may have made settings.php read-only.
+    $permissions = fileperms($file) & 0777;
+    chmod($file, $permissions | 0200);
+    file_put_contents($file, $migrated);
+    chmod($file, $permissions);
+    $io->say('Migrated outdated code in settings.php.');
+  }
+
+  /**
+   * Ensures ENV="dev" in the .env file of projects on the dev server.
+   *
+   * Without ENV, settings.php falls back to "prod" outside of DDEV.
+   */
+  protected function ensureDevEnv(ConsoleIO $io): void {
+    if (!$this->isDevDir() || !is_file('.env') || preg_match('/^ENV="dev"$/m', file_get_contents('.env')) === 1) {
+      return;
+    }
+    $this->taskWriteToFile('.env')
+      ->append(TRUE)
+      ->regexReplace('/^ENV=.*$/m', 'ENV="dev"')
+      ->appendUnlessMatches('/^ENV=/m', "ENV=\"dev\"\n")
+      ->run();
+    $io->say('Set ENV="dev" in .env.');
+  }
+
+  /**
+   * Migrates settings.php and .env of an existing project to the starterkit.
+   */
+  public function settingsMigrate(ConsoleIO $io) {
+    $this->ensureProjectDir();
+    $this->migrateSettings($io);
+    $this->ensureDevEnv($io);
+  }
+
+  /**
    * Returns true if the current project has a prod environment configuration.
    */
   protected function hasProdEnv() {
@@ -279,6 +343,7 @@ class RoboFile extends Tasks
       }
     }
     $this->stopOnFail(TRUE);
+    $this->settingsMigrate($io);
     $this->_exec("./vendor/bin/drush state:set system.maintenance_mode 1");
     $this->_exec("git pull origin master");
     $this->_exec("git clean -fd config/sync");
@@ -446,6 +511,12 @@ class RoboFile extends Tasks
       $project->require->{$key} = $item;
     }
 
+    /* sync composer scripts, e.g. the htaccess patch command */
+    $project->scripts ??= new stdClass();
+    foreach ($starterkit->scripts as $key => $item) {
+      $project->scripts->{$key} = $item;
+    }
+
     /* sync mandatory patches */
     $this->_exec("cp ../_dev/drupal-starterkit/private/patches/* ./private/patches/");
     foreach ($starterkit->extra->patches as $package => $patch) {
@@ -459,6 +530,7 @@ class RoboFile extends Tasks
 
     /* sync scaffold files */
     $this->_exec("cp ../_dev/drupal-starterkit/private/scaffold/* ./private/scaffold/");
+    $this->settingsMigrate($io);
 
     $composerRemove = json_decode(file_get_contents('./private/patches/COMPOSER.REMOVE.json'));
 
@@ -507,6 +579,9 @@ class RoboFile extends Tasks
       $doForwardSync = $io->ask('Do you want do pull the updates into the prod environment? (y/n)', 'y');
       if (strtolower($doForwardSync) == 'y') {
         $this->_exec('./vendor/bin/drush @prod site:ssh ./vendor/bin/robo pull');
+        // The pull above still ran prod's previous RoboFile, which might not
+        // know the migration yet.
+        $this->_exec('./vendor/bin/drush @prod site:ssh ./vendor/bin/robo settings:migrate');
       }
     }
   }
