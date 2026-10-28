@@ -152,6 +152,8 @@ class RoboFile extends Tasks
     }
     $this->stopOnFail(TRUE);
     $this->taskWriteToFile('.env')
+      // Without ENV, settings.php falls back to "prod" outside of DDEV.
+      ->line('ENV="dev"')
       ->line("PROJECT_NAME=\"{$projectName}\"")
       ->line("DB_NAME=\"{$dbName}\"")
       ->line("DB_USER=\"{$dbUser}\"")
