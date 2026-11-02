@@ -1,5 +1,9 @@
 # CHANGES
 
+##### 2026-11-02 1.3.15
+
+- BUGFIX: Version in maintenance.info.yml matches the release.
+
 ##### 2026-10-28 1.3.14
 
 - FEATURE: New command "robo settings:migrate": replaces outdated code in an
