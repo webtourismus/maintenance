@@ -1,5 +1,12 @@
 # CHANGES
 
+##### 2026-11-03 1.3.16
+
+- FEATURE: "robo settings:migrate" adds `error_reporting(E_ALL & ~E_DEPRECATED
+  & ~E_USER_DEPRECATED)` to an existing project's settings.php, so PHP
+  deprecation notices no longer fill the watchdog table. Real errors and
+  warnings are still logged. Runs with "robo pull" and "robo update".
+
 ##### 2026-11-02 1.3.15
 
 - BUGFIX: Version in maintenance.info.yml matches the release.

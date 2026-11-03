@@ -146,6 +146,16 @@ class RoboFile extends Tasks
       ],
       $settings,
     );
+    // Do not log PHP deprecation notices, so they do not fill the watchdog
+    // table. Inserted before the block that follows it in the starterkit.
+    if ($migrated !== NULL && !str_contains($migrated, 'E_DEPRECATED')) {
+      $migrated = preg_replace(
+        '/^(\/\*\*\n \* Disable permission hardening)/m',
+        "/**\n * Do not log PHP deprecation notices.\n *\n * Drupal's error handler only logs errors enabled in error_reporting(), so\n * deprecations of contrib or older code on newer PHP versions do not fill the\n * watchdog table. Real errors and warnings are still logged.\n */\nerror_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);\n\n\$1",
+        $migrated,
+        1,
+      );
+    }
     if ($migrated === NULL || $migrated === $settings) {
       return;
     }
