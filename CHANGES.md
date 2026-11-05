@@ -1,5 +1,10 @@
 # CHANGES
 
+##### 2026-11-05 1.3.17
+
+- BUGFIX: "drush maintenance:create-default-content" links the front page popup block to its
+  block content again (misplaced parenthesis in the `strpos()` check).
+
 ##### 2026-11-03 1.3.16
 
 - FEATURE: "robo settings:migrate" adds `error_reporting(E_ALL & ~E_DEPRECATED
