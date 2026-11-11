@@ -1,5 +1,14 @@
 # CHANGES
 
+##### 2026-11-11 1.3.18
+
+- BUGFIX: "robo golive" removes the hardcoded `$databases` block that
+  "drush site:install" appends to settings.php before the file is copied to
+  prod. Previously prod could connect with the dev database credentials
+  instead of the ones from .env. "robo kickoff:install-drupal" uses the same
+  cleanup, which no longer depends on the order of the keys in the block.
+  Aborts if DB_NAME or DB_USER is missing in .env.
+
 ##### 2026-11-05 1.3.17
 
 - BUGFIX: "drush maintenance:create-default-content" links the front page popup block to its

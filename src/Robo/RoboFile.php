@@ -168,6 +168,36 @@ class RoboFile extends Tasks
   }
 
   /**
+   * Removes hardcoded database credentials from the project's settings.php.
+   *
+   * "drush site:install" appends a $databases block with the literal
+   * credentials of the current environment. It overrides the .env based block,
+   * so on prod it would connect with the dev credentials. Only matches the
+   * var_export() format ("array (") written by Drupal, never the starterkit's
+   * "[" block reading $_ENV.
+   */
+  protected function removeHardcodedDatabases(ConsoleIO $io): void {
+    $file = './web/sites/default/settings.php';
+    if (!is_file($file)) {
+      return;
+    }
+    $settings = file_get_contents($file);
+    $pattern = '/^\$databases\[\'default\'\]\[\'default\'\]\s*=\s*array\s*\(\n.*?^\);\n?/ms';
+    if (preg_match($pattern, $settings) !== 1) {
+      return;
+    }
+    if (empty($_ENV['DB_NAME']) || empty($_ENV['DB_USER'])) {
+      throw new AbortTasksException('settings.php contains hardcoded database credentials, but DB_NAME or DB_USER is missing in .env. Add them to .env first.');
+    }
+    // Drupal may have made settings.php read-only.
+    $permissions = fileperms($file) & 0777;
+    chmod($file, $permissions | 0200);
+    file_put_contents($file, preg_replace($pattern, '', $settings));
+    chmod($file, $permissions);
+    $io->say('Removed hardcoded $databases block from settings.php.');
+  }
+
+  /**
    * Ensures ENV="dev" in the .env file of projects on the dev server.
    *
    * Without ENV, settings.php falls back to "prod" outside of DDEV.
@@ -254,10 +284,7 @@ class RoboFile extends Tasks
     $this->_exec("./vendor/bin/drush site:install --existing-config --site-name=\"{$projectName}\" --account-name=entwicklung --account-mail=entwicklung@webtourismus.at --no-interaction");
     $this->_exec("chmod -R u+w ./web/sites/default");
     // remove hardcoded $database settings created by drush site:install again
-    $this->taskReplaceInFile('./web/sites/default/settings.php')
-      ->regex('/\$databases\[\'default\'\]\[\'default\'\]\s*=\s*array\s*\(\s*\'database\'\s*=>\s*\'[^\']+\'.+\,\s*\);/s')
-      ->to('')
-      ->run();
+    $this->removeHardcodedDatabases($io);
     $this->_exec("./vendor/bin/drush php:eval \"\Drupal::keyValue('development_settings')->setMultiple(['disable_rendered_output_cache_bins' => TRUE, 'twig_debug' => TRUE, 'twig_cache_disable' => TRUE]);\"");
     $this->_exec("./vendor/bin/drush cache:rebuild");
     if (is_dir('../factory/web/sites/default/files/amenity')) {
@@ -403,6 +430,9 @@ class RoboFile extends Tasks
     $sshHost = $io->choice('Select live host', self::PROD_HOSTNAMES, $_ENV['PROD_SSH_HOST'] ?? NULL);
     $sshUser = $io->ask('Enter SSH username on prod host', $_ENV['PROD_SSH_USER'] ?? NULL);
     $domain = $io->ask('Enter production domain (usually starting with www.)', $_ENV['PROD_DOMAIN'] ?? NULL);
+    // settings.php is copied to prod by "core:rsync" below, so it must not
+    // contain the hardcoded dev credentials written by "drush site:install".
+    $this->removeHardcodedDatabases($io);
     $this->taskWriteToFile('.env')
       ->append(TRUE)
       // if the setting exists, replace it
