@@ -68,3 +68,39 @@ function maintenance_post_update_webform_title_neutral_options(): string {
     ? 'Added gender-neutral salutation options (' . implode(', ', $updated) . ').'
     : 'Gender-neutral salutation options already present.';
 }
+
+/**
+ * Uses "Ms." instead of "Mrs." in the English salutation list of webforms.
+ *
+ * "Mrs." implies a married woman. Only an unchanged "Mrs." is replaced.
+ */
+function maintenance_post_update_webform_title_ms(): string {
+  $name = 'webform.webform_options.title';
+  $languageManager = \Drupal::languageManager();
+  $configs = [];
+  $source = \Drupal::configFactory()->getEditable($name);
+  if (!$source->isNew() && ($source->get('langcode') ?? '') === 'en') {
+    $configs[] = $source;
+  }
+  if (method_exists($languageManager, 'getLanguageConfigOverride') && $languageManager->getLanguage('en')) {
+    $override = $languageManager->getLanguageConfigOverride('en', $name);
+    if (!$override->isNew()) {
+      $configs[] = $override;
+    }
+  }
+
+  foreach ($configs as $config) {
+    $options = is_string($config->get('options')) ? Yaml::decode($config->get('options')) : NULL;
+    if (!is_array($options)) {
+      continue;
+    }
+    $key = array_search('Mrs.', $options, TRUE);
+    if ($key === FALSE) {
+      continue;
+    }
+    $options[$key] = 'Ms.';
+    $config->set('options', rtrim(Yaml::encode($options)))->save();
+    return 'Replaced "Mrs." with "Ms." in the English salutation list.';
+  }
+  return 'No English "Mrs." salutation found.';
+}

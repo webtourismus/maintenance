@@ -1,5 +1,11 @@
 # CHANGES
 
+##### 2026-11-12 1.3.20
+
+- FEATURE: Post update replaces "Mrs." with "Ms." in the English "title"
+  (salutation) webform options. "Mrs." implies a married woman. Customized
+  labels are kept.
+
 ##### 2026-11-12 1.3.19
 
 - FEATURE: Post update adds the gender-neutral options "Divers" and
