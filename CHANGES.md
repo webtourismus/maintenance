@@ -1,5 +1,12 @@
 # CHANGES
 
+##### 2026-11-12 1.3.19
+
+- FEATURE: Post update adds the gender-neutral options "Divers" and
+  "Keine Anrede" to the "title" (Anrede) webform options and to their existing
+  translations (en, fr, it; other languages get the English labels). Existing
+  options are kept. Runs with "drush updatedb", e.g. during "robo update".
+
 ##### 2026-11-11 1.3.18
 
 - BUGFIX: "robo golive" removes the hardcoded `$databases` block that
