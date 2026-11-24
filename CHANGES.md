@@ -1,5 +1,19 @@
 # CHANGES
 
+##### 2026-11-24 1.3.22
+
+- BUGFIX: The imprint, privacy and accessibility pages use Pathauto ("Generate
+  automatic URL alias"). Previously Pathauto was disabled for them, so TMGMT
+  translated the URL alias as text and machine translation created aliases
+  like "/privacy policy" (rendered as "/privacy%20policy"). Now Pathauto
+  creates the alias from the translated title, e.g. "/privacy-policy".
+  - "drush maintenance:create-default-content" creates these pages with
+    Pathauto enabled (German aliases unchanged).
+  - Post update enables Pathauto on existing sites if the alias in the
+    original language stays the same, and regenerates the aliases of
+    translations. With the redirect module, the old alias redirects to the
+    new one.
+
 ##### 2026-11-24 1.3.21
 
 - FEATURE: "robo update" syncs `composer-exit-on-patch-failure` from the

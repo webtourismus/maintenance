@@ -104,3 +104,60 @@ function maintenance_post_update_webform_title_ms(): string {
   }
   return 'No English "Mrs." salutation found.';
 }
+
+/**
+ * Enables Pathauto for the imprint, privacy and accessibility pages.
+ *
+ * With Pathauto disabled, TMGMT sends the URL alias to the translator, which
+ * creates aliases like "/privacy policy" (rendered as "/privacy%20policy").
+ * With Pathauto enabled, TMGMT skips the alias and Pathauto creates it from the
+ * translated title, e.g. "/privacy-policy".
+ *
+ * A page is only switched if Pathauto creates the same alias as the current one
+ * in its original language, so existing URLs do not change. Aliases of
+ * translations are regenerated; with the redirect module ("auto_redirect"), the
+ * old alias redirects to the new one.
+ */
+function maintenance_post_update_legal_pages_pathauto(): string {
+  if (!\Drupal::moduleHandler()->moduleExists('pathauto') || !\Drupal::hasService('ebr.service')) {
+    return 'Pathauto or ebr not available.';
+  }
+  /** @var \Drupal\pathauto\PathautoGeneratorInterface $generator */
+  $generator = \Drupal::service('pathauto.generator');
+  $aliasManager = \Drupal::service('path_alias.manager');
+  $state = \Drupal::keyValue('pathauto_state.node');
+
+  $messages = [];
+  foreach (['imprint', 'privacy', 'accessibility'] as $internalId) {
+    $node = \Drupal::service('ebr.service')->getEntity('node', $internalId);
+    if (!$node instanceof \Drupal\node\NodeInterface) {
+      continue;
+    }
+    if ((int) $state->get($node->id()) === \Drupal\pathauto\PathautoState::CREATE) {
+      $messages[] = "{$internalId}: already enabled";
+      continue;
+    }
+    $original = $node->getUntranslated();
+    $path = '/node/' . $node->id();
+    $current = $aliasManager->getAliasByPath($path, $original->language()->getId());
+    $generated = $generator->createEntityAlias($original, 'return');
+    if ($generated === NULL || $generated !== $current) {
+      $messages[] = "{$internalId}: kept, {$current} would change to " . ($generated ?? 'no alias');
+      continue;
+    }
+
+    $state->set($node->id(), \Drupal\pathauto\PathautoState::CREATE);
+    $translations = [];
+    foreach (array_keys($node->getTranslationLanguages(FALSE)) as $langcode) {
+      $translation = $node->getTranslation($langcode);
+      $before = $aliasManager->getAliasByPath($path, $langcode);
+      $generator->updateEntityAlias($translation, 'bulkupdate', ['force' => TRUE]);
+      $aliasManager->cacheClear($path);
+      $after = $aliasManager->getAliasByPath($path, $langcode);
+      $translations[] = $before === $after ? "{$langcode} {$after}" : "{$langcode} {$before} => {$after}";
+    }
+    $messages[] = "{$internalId}: enabled" . ($translations ? ' (' . implode(', ', $translations) . ')' : '');
+  }
+
+  return $messages ? 'Pathauto for legal pages: ' . implode('; ', $messages) . '.' : 'No legal pages found.';
+}

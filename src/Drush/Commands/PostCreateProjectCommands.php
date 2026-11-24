@@ -400,16 +400,12 @@ final class PostCreateProjectCommands extends DrushCommands {
         'langcode' => 'de',
         'uid' => 1,
         EntityBusinessrules::FIELD_INTERNAL_ID => 'imprint',
+        // Pathauto creates the alias from the title (also for translations, e.g.
+        // "Privacy policy" => /en/privacy-policy). TMGMT does not translate it.
+        'path' => ['pathauto' => PathautoState::CREATE],
         EntityBusinessrules::FIELD_INTERAL_NOTES => '@todo: Befüllen.',
       ]);
       $node->save();
-      $nodeAlias = PathAlias::create([
-        'path' => "/node/{$node->id()}",
-        'alias' => '/impressum',
-        'langcode' => 'de',
-      ]);
-      $nodeAlias->save();
-      $this->keyValue->get('pathauto_state.node')->set($node->id(), PathautoState::SKIP);
       $menuLinkStorage = $this->entityTypeManager->getStorage('menu_link_content');
       $menuLinkStorage->create([
         'title' => 'Impressum',
@@ -429,17 +425,13 @@ final class PostCreateProjectCommands extends DrushCommands {
         'langcode' => 'de',
         'uid' => 1,
         EntityBusinessrules::FIELD_INTERNAL_ID => 'privacy',
+        // Pathauto creates the alias from the title (also for translations, e.g.
+        // "Privacy policy" => /en/privacy-policy). TMGMT does not translate it.
+        'path' => ['pathauto' => PathautoState::CREATE],
         EntityBusinessrules::FIELD_INTERAL_NOTES => '@todo: Befüllen.',
         'field_seo' => '{"robots":"noindex, nofollow, noarchive, nosnippet, noimageindex"}',
       ]);
       $node->save();
-      $nodeAlias = PathAlias::create([
-        'path' => "/node/{$node->id()}",
-        'alias' => '/datenschutz',
-        'langcode' => 'de',
-      ]);
-      $nodeAlias->save();
-      $this->keyValue->get('pathauto_state.node')->set($node->id(), PathautoState::SKIP);
       $menuLinkStorage = $this->entityTypeManager->getStorage('menu_link_content');
       $menuLinkStorage->create([
         'title' => 'Datenschutz',
@@ -459,17 +451,13 @@ final class PostCreateProjectCommands extends DrushCommands {
         'langcode' => 'de',
         'uid' => 1,
         EntityBusinessrules::FIELD_INTERNAL_ID => 'accessibility',
+        // Pathauto creates the alias from the title (also for translations, e.g.
+        // "Privacy policy" => /en/privacy-policy). TMGMT does not translate it.
+        'path' => ['pathauto' => PathautoState::CREATE],
         EntityBusinessrules::FIELD_INTERAL_NOTES => '@todo: Befüllen.',
         'field_seo' => '{"robots":"noindex, nofollow, noarchive, nosnippet, noimageindex"}',
       ]);
       $node->save();
-      $nodeAlias = PathAlias::create([
-        'path' => "/node/{$node->id()}",
-        'alias' => '/barrierefreiheit',
-        'langcode' => 'de',
-      ]);
-      $nodeAlias->save();
-      $this->keyValue->get('pathauto_state.node')->set($node->id(), PathautoState::SKIP);
       $menuLinkStorage = $this->entityTypeManager->getStorage('menu_link_content');
       $menuLinkStorage->create([
         'title' => 'Barrierefreiheit',
