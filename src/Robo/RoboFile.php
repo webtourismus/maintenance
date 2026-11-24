@@ -567,6 +567,10 @@ class RoboFile extends Tasks
         $project->extra->patches->{$package}->{$key} = $file;
       }
     }
+    /* sync patch settings, e.g. stop the install if a patch fails */
+    if (property_exists($starterkit->extra, 'composer-exit-on-patch-failure')) {
+      $project->extra->{'composer-exit-on-patch-failure'} = $starterkit->extra->{'composer-exit-on-patch-failure'};
+    }
 
     /* sync scaffold files */
     $this->_exec("cp ../_dev/drupal-starterkit/private/scaffold/* ./private/scaffold/");

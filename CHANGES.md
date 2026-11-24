@@ -1,5 +1,11 @@
 # CHANGES
 
+##### 2026-11-24 1.3.21
+
+- FEATURE: "robo update" syncs `composer-exit-on-patch-failure` from the
+  starterkit, so a failing patch stops the install instead of silently
+  installing the unpatched package.
+
 ##### 2026-11-12 1.3.20
 
 - FEATURE: Post update replaces "Mrs." with "Ms." in the English "title"
